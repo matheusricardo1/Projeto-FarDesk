@@ -1,0 +1,7 @@
+# Estado local de sessão do Claude Code — não é conteúdo do projeto.
+.claude/
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
