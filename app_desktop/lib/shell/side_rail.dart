@@ -5,7 +5,7 @@ import '../core/design_system/design_system.dart';
 import '../features/account/presentation/account_presentation.dart';
 import '../features/account/presentation/session_view_model.dart';
 
-enum ShellDestination { devices, settings, account }
+enum ShellDestination { devices, integrations, settings, account }
 
 class SideRail extends StatelessWidget {
   const SideRail({super.key, required this.destination, required this.onSelect});
@@ -30,6 +30,13 @@ class SideRail extends StatelessWidget {
             tooltip: 'Dispositivos',
             active: destination == ShellDestination.devices,
             onTap: () => onSelect(ShellDestination.devices),
+          ),
+          SizedBox(height: rem(Space.sm)),
+          AppIconButton(
+            icon: Icons.extension_rounded,
+            tooltip: 'Integrações',
+            active: destination == ShellDestination.integrations,
+            onTap: () => onSelect(ShellDestination.integrations),
           ),
           const Spacer(),
           AppIconButton(

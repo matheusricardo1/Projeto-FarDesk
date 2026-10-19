@@ -5,6 +5,8 @@ import '../core/design_system/design_system.dart';
 import '../features/account/presentation/account_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/devices/presentation/devices_view_model.dart';
+import '../features/integrations/presentation/integrations_screen.dart';
+import '../features/integrations/presentation/integrations_view_model.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/settings/presentation/settings_view_model.dart';
 import 'side_rail.dart';
@@ -19,6 +21,7 @@ class AppShell extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => DevicesViewModel(context.read())..load()),
+        ChangeNotifierProvider(create: (context) => IntegrationsViewModel(context.read())..load()),
         ChangeNotifierProvider(create: (context) => SettingsViewModel(context.read())..load()),
       ],
       child: const _ShellLayout(),
@@ -47,6 +50,7 @@ class _ShellLayoutState extends State<_ShellLayout> {
           child: FadeSwitcher(
             child: switch (_destination) {
               ShellDestination.devices => const DevicesScreen(key: ValueKey(ShellDestination.devices)),
+              ShellDestination.integrations => const IntegrationsScreen(key: ValueKey(ShellDestination.integrations)),
               ShellDestination.settings => const SettingsScreen(key: ValueKey(ShellDestination.settings)),
               ShellDestination.account => const AccountScreen(key: ValueKey(ShellDestination.account)),
             },
