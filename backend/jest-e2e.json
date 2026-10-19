@@ -1,0 +1,18 @@
+{
+  "preset": "ts-jest/presets/default-esm",
+  "extensionsToTreatAsEsm": [".ts"],
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleNameMapper": {
+    "^@nestjs/throttler$": "<rootDir>/support/nestjs-throttler.mock.ts",
+    "^@app\\.module$": "<rootDir>/../../app.module.ts",
+    "^@(shared|modules|tests)/(.*)$": "<rootDir>/../../$1/$2",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "rootDir": "src/tests/integration",
+  "setupFiles": ["<rootDir>/support/setup-env.cjs"],
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.ts$": ["ts-jest", { "useESM": true }]
+  }
+}

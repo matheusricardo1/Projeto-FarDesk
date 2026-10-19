@@ -1,0 +1,47 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master]
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      # Segredos de CI, não de produção — fixos só pra satisfazer a validação
+      # de formato em `env.validation.ts` (precisam decodificar pra 32 bytes
+      # base64) e deixar build/test rodarem.
+      AUTH_JWT_SECRET: 'Dg9c/9DnSkqerU8sody38IoaZIFbwbHYKZmIMliccC4='
+      INTEGRATIONS_MASTER_KEY: '5Pvh69Eszz91nWbWcbKhA9eyz3OUNBol/V/zQuyqrj8='
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Type check
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Build
+        run: npm run build
