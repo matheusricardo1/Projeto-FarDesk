@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/design_system/design_system.dart';
+import '../../integrations/presentation/integrations_view_model.dart';
+import '../../streaming/domain/launch_target.dart';
+import '../../streaming/presentation/launch_target_sheet.dart';
+import '../../streaming/presentation/streaming_screen.dart';
+import '../domain/device.dart';
 import 'device_card.dart';
 import 'devices_view_model.dart';
 
@@ -98,10 +103,32 @@ class _DevicesBody extends StatelessWidget {
         return DeviceCard(
           device: device,
           pending: viewModel.isPending(device.id),
-          onConnect: () => viewModel.connect(device),
-          onWake: () => viewModel.wake(device),
+          onConnect: () => _launch(context, device, action: () => viewModel.connect(device)),
+          onWake: () => _launch(context, device, action: () => viewModel.wake(device)),
         );
       },
+    );
+  }
+
+  /// Pergunta onde abrir (desktop / Steam / Hydra, conforme o que está
+  /// conectado em Integrações), executa a ação de conexão/despertar, e — se
+  /// der certo — entra na tela de stream.
+  Future<void> _launch(BuildContext context, Device device, {required Future<void> Function() action}) async {
+    final integrations = context.read<IntegrationsViewModel>();
+    final availableTargets = [
+      LaunchTarget.desktop,
+      if (integrations.isIntegrationConnected('steam')) LaunchTarget.steam,
+      if (integrations.isIntegrationConnected('hydra')) LaunchTarget.hydra,
+    ];
+
+    final target = await showLaunchTargetSheet(context, device: device, availableTargets: availableTargets);
+    if (target == null || !context.mounted) return;
+
+    await action();
+    if (!context.mounted) return;
+
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => StreamingScreen(device: device, target: target)),
     );
   }
 }

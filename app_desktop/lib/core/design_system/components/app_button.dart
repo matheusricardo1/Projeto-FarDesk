@@ -22,6 +22,9 @@ enum AppButtonVariant {
   /// Não é ação — só ocupa o lugar do botão informando o estado
   /// ("Em uso por outra sessão", "Offline").
   muted,
+
+  /// Ação destrutiva ou que encerra algo (ex: "Encerrar sessão").
+  danger,
 }
 
 enum AppButtonSize {
@@ -139,6 +142,13 @@ class AppButton extends StatelessWidget {
       AppButtonVariant.muted => (
           background: AppColors.surfaceRaised,
           foreground: AppColors.textMuted,
+          border: null,
+        ),
+      AppButtonVariant.danger => (
+          background: disabled
+              ? AppColors.danger.withValues(alpha: 0.35)
+              : (hovering ? Color.lerp(AppColors.danger, Colors.black, 0.12)! : AppColors.danger),
+          foreground: AppColors.onBrand,
           border: null,
         ),
     };
