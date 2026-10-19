@@ -21,5 +21,9 @@ Future<void> main() async {
     await windowManager.focus();
   });
 
-  runApp(FarDeskApp(dependencies: AppDependencies.mock()));
+  // URL do backend — override com `flutter run --dart-define=BACKEND_BASE_URL=https://...`
+  // quando o backend não estiver em localhost:3000.
+  const backendBaseUrl = String.fromEnvironment('BACKEND_BASE_URL', defaultValue: 'http://localhost:3000');
+
+  runApp(FarDeskApp(dependencies: AppDependencies.real(backendBaseUrl: backendBaseUrl)));
 }

@@ -1,9 +1,10 @@
 class Account {
-  const Account({required this.id, required this.name, required this.email});
+  const Account({required this.id, required this.name, required this.email, this.avatarUrl});
 
   final String id;
   final String name;
   final String email;
+  final String? avatarUrl;
 
   String get initial => name.isEmpty ? '?' : name[0].toUpperCase();
 }
