@@ -1,7 +1,7 @@
 import { AggregateRoot } from '@shared/domain/base/aggregate-root.base';
 import { IntegrationConnectedEvent } from '@modules/integrations/domain/events/integration-connected.event';
 import { IntegrationDisconnectedEvent } from '@modules/integrations/domain/events/integration-disconnected.event';
-import type { EncryptedCredential } from '@modules/integrations/domain/value-objects/encrypted-credential.vo';
+import type { EncryptedCredential } from '@shared/domain/types/encrypted-credential.vo';
 import { IntegrationId } from '@modules/integrations/domain/value-objects/integration-id.vo';
 import type { IntegrationPlatform } from '@modules/integrations/domain/value-objects/integration-platform.vo';
 import { IntegrationStatus } from '@modules/integrations/domain/value-objects/integration-status.vo';

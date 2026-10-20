@@ -1,6 +1,9 @@
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import '../core/host_agent/pairing_api_client.dart';
+import '../core/moonlight/moonlight_client.dart';
+import '../core/moonlight/windows_moonlight_client.dart';
 import '../features/account/data/google_auth_repository.dart';
 import '../features/account/data/mock_auth_repository.dart';
 import '../features/account/domain/auth_repository.dart';
@@ -23,14 +26,19 @@ class AppDependencies {
     required this.deviceRepository,
     required this.integrationRepository,
     required this.settingsRepository,
+    this.pairingApiClient,
+    required this.moonlightClient,
   });
 
-  /// Tudo em memória, sem backend — pra desenvolver e testar a UI.
+  /// Tudo em memória, sem backend — pra desenvolver e testar a UI. Sem
+  /// `pairingApiClient`: não existe backend de verdade pra vigiar, então o
+  /// `HostAgentPairingService` nunca é iniciado neste modo.
   factory AppDependencies.mock() => AppDependencies(
         authRepository: MockAuthRepository(),
         deviceRepository: MockDeviceRepository(),
         integrationRepository: MockIntegrationRepository(),
         settingsRepository: InMemorySettingsRepository(),
+        moonlightClient: WindowsMoonlightClient(),
       );
 
   /// Tudo contra o backend FarDesk de verdade. Configurações continuam só
@@ -45,6 +53,8 @@ class AppDependencies {
       integrationRepository:
           IntegrationApiRepository(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
       settingsRepository: InMemorySettingsRepository(),
+      pairingApiClient: PairingApiClient(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
+      moonlightClient: WindowsMoonlightClient(),
     );
   }
 
@@ -53,11 +63,17 @@ class AppDependencies {
   final IntegrationRepository integrationRepository;
   final SettingsRepository settingsRepository;
 
+  /// `null` em modo mock — ver `AppDependencies.mock()`.
+  final PairingApiClient? pairingApiClient;
+  final MoonlightClient moonlightClient;
+
   List<SingleChildWidget> get providers => [
         Provider<AuthRepository>.value(value: authRepository),
         Provider<DeviceRepository>.value(value: deviceRepository),
         Provider<IntegrationRepository>.value(value: integrationRepository),
         Provider<SettingsRepository>.value(value: settingsRepository),
+        Provider<PairingApiClient?>.value(value: pairingApiClient),
+        Provider<MoonlightClient>.value(value: moonlightClient),
         ChangeNotifierProvider(create: (_) => SessionViewModel(authRepository)),
       ];
 }

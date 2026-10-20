@@ -25,7 +25,9 @@ class DevicesViewModel extends ChangeNotifier {
   List<Device> get visibleDevices {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return _devices;
-    return _devices.where((d) => d.name.toLowerCase().contains(query)).toList(growable: false);
+    return _devices
+        .where((d) => d.name.toLowerCase().contains(query))
+        .toList(growable: false);
   }
 
   /// Se há uma ação (conectar/acordar) em andamento pra esse dispositivo.
@@ -35,6 +37,11 @@ class DevicesViewModel extends ChangeNotifier {
     _loading = true;
     _loadError = null;
     notifyListeners();
+
+    // Best-effort: se o registro falhar (ex: offline), ainda tentamos
+    // listar — só não vai aparecer um card marcado como "este dispositivo"
+    // até o próximo `load()` bem-sucedido.
+    await _repository.registerThisDevice();
 
     switch (await _repository.fetchDevices()) {
       case Ok(:final value):
@@ -53,24 +60,33 @@ class DevicesViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> connect(Device device) => _runAction(device.id, () => _repository.connect(device.id));
+  Future<Result<void>> connect(Device device) =>
+      _runAction(device.id, () => _repository.connect(device.id));
 
-  Future<void> wake(Device device) => _runAction(device.id, () async {
-        final result = await _repository.wake(device.id);
-        if (result case Ok(:final value)) _replace(value);
-        return result;
-      });
+  Future<Result<Device>> wake(Device device) => _runAction(device.id, () async {
+    final result = await _repository.wake(device.id);
+    if (result case Ok(:final value)) _replace(value);
+    return result;
+  });
 
-  Future<void> _runAction<T>(String deviceId, Future<Result<T>> Function() action) async {
-    if (_pending.contains(deviceId)) return;
+  Future<Result<T>> _runAction<T>(
+    String deviceId,
+    Future<Result<T>> Function() action,
+  ) async {
+    if (_pending.contains(deviceId))
+      return Failure(StateError('Ação já em andamento para $deviceId.'));
     _pending.add(deviceId);
     _actionError = null;
     notifyListeners();
 
-    if (await action() case Failure(:final error)) _actionError = error;
-
-    _pending.remove(deviceId);
-    notifyListeners();
+    try {
+      final result = await action();
+      if (result case Failure(:final error)) _actionError = error;
+      return result;
+    } finally {
+      _pending.remove(deviceId);
+      notifyListeners();
+    }
   }
 
   void _replace(Device updated) {

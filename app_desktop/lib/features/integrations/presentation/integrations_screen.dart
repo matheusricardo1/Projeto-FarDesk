@@ -30,21 +30,20 @@ class IntegrationsScreen extends StatelessWidget {
   }
 }
 
-/// O Tailscale não conecta com um clique: precisa de um OAuth client
-/// (client ID + secret) gerado no painel do Tailscale, colado numa chave.
-/// As outras integrações do catálogo (hoje nenhuma de verdade) seguem o
-/// clique direto.
+/// O Tailscale não conecta com um clique: precisa de um API access token
+/// gerado no painel do Tailscale, colado numa chave. As outras integrações
+/// do catálogo (hoje nenhuma de verdade) seguem o clique direto.
 Future<void> _handleConnect(BuildContext context, IntegrationsViewModel viewModel, Integration integration) async {
   if (integration.authMethod != IntegrationAuthMethod.apiKey) {
     await viewModel.connect(integration);
     return;
   }
-  final credentials = await showDialog<(String, String)>(
+  final apiAccessToken = await showDialog<String>(
     context: context,
     builder: (_) => const _TailscaleCredentialsDialog(),
   );
-  if (credentials == null) return;
-  await viewModel.connectTailscale(integration, clientId: credentials.$1, clientSecret: credentials.$2);
+  if (apiAccessToken == null) return;
+  await viewModel.connectTailscale(integration, apiAccessToken: apiAccessToken);
 }
 
 class _TailscaleCredentialsDialog extends StatefulWidget {
@@ -55,10 +54,9 @@ class _TailscaleCredentialsDialog extends StatefulWidget {
 }
 
 class _TailscaleCredentialsDialogState extends State<_TailscaleCredentialsDialog> {
-  String _clientId = '';
-  String _clientSecret = '';
+  String _apiAccessToken = '';
 
-  bool get _canSubmit => _clientId.trim().isNotEmpty && _clientSecret.trim().isNotEmpty;
+  bool get _canSubmit => _apiAccessToken.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -72,12 +70,16 @@ class _TailscaleCredentialsDialogState extends State<_TailscaleCredentialsDialog
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Gere um OAuth client no painel do Tailscale (Settings → OAuth clients) e cole as credenciais abaixo.',
+              'No painel do Tailscale: Settings → Keys → "API access tokens" → Generate access token... '
+              'e cole o valor abaixo.',
             ),
             const SizedBox(height: 16),
-            AppTextField(hint: 'Client ID', onChanged: (v) => setState(() => _clientId = v)),
-            const SizedBox(height: 12),
-            AppTextField(hint: 'Client secret', onChanged: (v) => setState(() => _clientSecret = v)),
+            AppTextField(
+              label: 'API access token',
+              hint: 'tskey-api-...',
+              obscureText: true,
+              onChanged: (v) => setState(() => _apiAccessToken = v),
+            ),
           ],
         ),
       ),
@@ -91,7 +93,7 @@ class _TailscaleCredentialsDialogState extends State<_TailscaleCredentialsDialog
         AppButton(
           label: 'Conectar',
           size: AppButtonSize.small,
-          onPressed: _canSubmit ? () => Navigator.of(context).pop((_clientId.trim(), _clientSecret.trim())) : null,
+          onPressed: _canSubmit ? () => Navigator.of(context).pop(_apiAccessToken.trim()) : null,
         ),
       ],
     );

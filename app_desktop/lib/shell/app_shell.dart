@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/design_system/design_system.dart';
+import '../core/host_agent/pairing_api_client.dart';
 import '../features/account/presentation/account_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/devices/presentation/devices_view_model.dart';
+import '../features/devices/presentation/host_activation_view_model.dart';
 import '../features/integrations/presentation/integrations_screen.dart';
 import '../features/integrations/presentation/integrations_view_model.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -13,14 +15,26 @@ import 'side_rail.dart';
 
 /// Área logada. Os ViewModels das features vivem aqui (e não em cada tela)
 /// pra manter o estado ao alternar entre as seções.
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => AppShellState();
+}
+
+class AppShellState extends State<AppShell> {
+  Future<void> shutdown() async {
+    await context.read<HostActivationViewModel>().shutdown();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => DevicesViewModel(context.read())..load()),
+        ChangeNotifierProvider(
+          create: (context) => HostActivationViewModel(pairingApiClient: context.read<PairingApiClient?>()),
+        ),
         ChangeNotifierProvider(create: (context) => IntegrationsViewModel(context.read())..load()),
         ChangeNotifierProvider(create: (context) => SettingsViewModel(context.read())..load()),
       ],

@@ -30,22 +30,37 @@ class FarDeskApp extends StatelessWidget {
 /// Moldura da janela (barra de título própria, já que não há moldura nativa)
 /// + alternância entre login e área logada a partir do estado de sessão.
 /// Sem navegação imperativa: sair da conta no futuro volta pro login sozinho.
-class _AppRoot extends StatelessWidget {
+class _AppRoot extends StatefulWidget {
   const _AppRoot();
 
   @override
+  State<_AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<_AppRoot> {
+  final shellKey = GlobalKey<AppShellState>();
+
+  @override
   Widget build(BuildContext context) {
-    final signedIn = context.select<SessionViewModel, bool>((session) => session.isSignedIn);
+    final signedIn = context.select<SessionViewModel, bool>(
+      (session) => session.isSignedIn,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const TitleBar(),
+          TitleBar(
+            onBeforeClose: () async {
+              await shellKey.currentState?.shutdown();
+            },
+          ),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
             child: FadeSwitcher(
               duration: Motion.slow,
-              child: signedIn ? const AppShell(key: ValueKey('shell')) : const LoginScreen(key: ValueKey('login')),
+              child: signedIn
+                  ? AppShell(key: shellKey)
+                  : const LoginScreen(key: ValueKey('login')),
             ),
           ),
         ],

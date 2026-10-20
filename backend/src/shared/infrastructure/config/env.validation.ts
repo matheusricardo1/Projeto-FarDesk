@@ -33,6 +33,10 @@ export class EnvironmentVariables {
   })
   INTEGRATIONS_MASTER_KEY!: string;
 
+  /** String de conexão do Postgres usada em runtime pelo PrismaClient (pooler transacional). */
+  @IsString()
+  DATABASE_URL!: string;
+
   /** Opcionais: o resto do backend sobe sem eles; só o login com Google depende. */
   @IsString()
   @IsOptional()

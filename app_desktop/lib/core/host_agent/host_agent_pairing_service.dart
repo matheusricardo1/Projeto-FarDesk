@@ -11,12 +11,15 @@ import 'sunshine_admin_client.dart';
 ///
 /// Fluxo de um ciclo (`_tick`):
 /// 1. Pergunta pro backend: tem `PairingRequest` pendente pra esse device?
-/// 2. Se tem, pergunta pro Sunshine local: quais pareamentos estão esperando PIN?
-/// 3. Acha, entre esses, o que tem o nosso nome de dispositivo
+/// 2. Se tem, chama `ensureHostRunning` — é só agora que o Sunshine liga de
+///    verdade (`HostActivation.ensureRunning`), nunca antes de alguém
+///    realmente tentar conectar.
+/// 3. Pergunta pro Sunshine local: quais pareamentos estão esperando PIN?
+/// 4. Acha, entre esses, o que tem o nosso nome de dispositivo
 ///    (`sunshineClientDeviceName` — o cliente já iniciou o handshake HTTPS
 ///    real nesse meio tempo, é isso que faz esse pareamento aparecer aqui).
-/// 4. Submete o PIN pro Sunshine com o `pairing_id` certo.
-/// 5. Confirma (`ack`) ou reporta falha (`fail`) de volta pro backend.
+/// 5. Submete o PIN pro Sunshine com o `pairing_id` certo.
+/// 6. Confirma (`ack`) ou reporta falha (`fail`) de volta pro backend.
 ///
 /// Não lida com o caso de duas pessoas tentando parear o mesmo host ao
 /// mesmo tempo (pegaria o primeiro pareamento pendente com o nome certo,
@@ -27,6 +30,7 @@ class HostAgentPairingService {
     required this.deviceId,
     required this.pairingApi,
     required this.sunshineAdmin,
+    this.ensureHostRunning,
     this.pollInterval = const Duration(seconds: 1),
     this.onError,
   });
@@ -35,6 +39,12 @@ class HostAgentPairingService {
   final PairingApiClient pairingApi;
   final SunshineAdminClient sunshineAdmin;
   final Duration pollInterval;
+
+  /// Liga o Sunshine (e configura credencial, na primeira vez) — só chamado
+  /// quando um `PairingRequest` pendente de verdade aparece, nunca em todo
+  /// ciclo de poll. `null` (padrão em teste) significa "já está no ar",
+  /// nada a fazer; em produção é `HostActivation().ensureRunning`.
+  final Future<void> Function()? ensureHostRunning;
 
   /// Erros de um ciclo não derrubam o loop — só são reportados aqui, se alguém quiser logar/observar.
   final void Function(Object error)? onError;
@@ -73,6 +83,10 @@ class HostAgentPairingService {
   Future<void> _runOnce() async {
     final pending = await pairingApi.fetchPending(deviceId);
     if (pending == null || pending.status != 'pending') return;
+
+    // Só liga o Sunshine quando existe de fato alguém tentando conectar —
+    // nunca em background por antecedência.
+    await ensureHostRunning?.call();
 
     final localPairings = await sunshineAdmin.listPendingPairings();
     final match = localPairings.where((pairing) => pairing.deviceName == sunshineClientDeviceName).firstOrNull;

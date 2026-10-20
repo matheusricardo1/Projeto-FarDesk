@@ -14,8 +14,8 @@ import { LOGIN_SESSION_REPOSITORY } from '@modules/auth/domain/repositories/logi
 import { GoogleOAuthApiGateway } from '@modules/auth/infrastructure/gateways/google-oauth.gateway';
 import { AuthController } from '@modules/auth/infrastructure/http/auth.controller';
 import { AuthEventsListener } from '@modules/auth/infrastructure/messaging/auth-events.listener';
-import { InMemoryAccountRepository } from '@modules/auth/infrastructure/persistence/account.repository.impl';
-import { InMemoryLoginSessionRepository } from '@modules/auth/infrastructure/persistence/login-session.repository.impl';
+import { PrismaAccountRepository } from '@modules/auth/infrastructure/persistence/account.repository.prisma';
+import { PrismaLoginSessionRepository } from '@modules/auth/infrastructure/persistence/login-session.repository.prisma';
 import { JwtAuthGuard } from '@modules/auth/infrastructure/security/jwt-auth.guard';
 import { JwtSessionTokenIssuer } from '@modules/auth/infrastructure/security/jwt-session-token-issuer';
 
@@ -25,8 +25,8 @@ import { JwtSessionTokenIssuer } from '@modules/auth/infrastructure/security/jwt
     { provide: START_GOOGLE_LOGIN_USE_CASE, useClass: StartGoogleLoginUseCaseImpl },
     { provide: COMPLETE_GOOGLE_LOGIN_USE_CASE, useClass: CompleteGoogleLoginUseCaseImpl },
     { provide: GET_LOGIN_SESSION_USE_CASE, useClass: GetLoginSessionUseCaseImpl },
-    { provide: ACCOUNT_REPOSITORY, useClass: InMemoryAccountRepository },
-    { provide: LOGIN_SESSION_REPOSITORY, useClass: InMemoryLoginSessionRepository },
+    { provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository },
+    { provide: LOGIN_SESSION_REPOSITORY, useClass: PrismaLoginSessionRepository },
     { provide: GOOGLE_OAUTH_GATEWAY, useClass: GoogleOAuthApiGateway },
     { provide: SESSION_TOKEN_ISSUER, useClass: JwtSessionTokenIssuer },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

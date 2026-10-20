@@ -16,6 +16,14 @@ add_executable(${BINARY_NAME} WIN32
   "runner.exe.manifest"
 )
 
+add_dependencies(${BINARY_NAME} fardesk_stream_core)
+
+add_custom_command(TARGET fardesk_stream_core POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:fardesk_stream_core>"
+    "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+)
+
 # Apply the standard set of build settings. This can be removed for applications
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})

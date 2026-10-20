@@ -13,12 +13,12 @@ import type {
   ListTailscaleDevicesError,
   ListTailscaleDevicesUseCase,
 } from '@modules/integrations/application/ports/in/list-tailscale-devices.use-case';
-import { CREDENTIAL_CIPHER } from '@modules/integrations/application/ports/out/credential-cipher.port';
-import type { CredentialCipher } from '@modules/integrations/application/ports/out/credential-cipher.port';
+import { CREDENTIAL_CIPHER } from '@shared/application/ports/credential-cipher.port';
+import type { CredentialCipher } from '@shared/application/ports/credential-cipher.port';
 import { TAILSCALE_GATEWAY } from '@modules/integrations/application/ports/out/platforms/tailscale-gateway.port';
 import type {
+  TailscaleApiCredential,
   TailscaleGateway,
-  TailscaleOAuthCredential,
 } from '@modules/integrations/application/ports/out/platforms/tailscale-gateway.port';
 
 /** O token é pedido de novo a cada uso, nunca guardado — só a credencial cifrada persiste. */
@@ -40,17 +40,12 @@ export class ListTailscaleDevicesUseCaseImpl implements ListTailscaleDevicesUseC
     if (!integration?.credential)
       return Result.err(new IntegrationNotFoundException(IntegrationPlatform.Tailscale));
 
-    const credential = JSON.parse(this.cipher.decrypt(integration.credential)) as TailscaleOAuthCredential;
+    const credential = JSON.parse(this.cipher.decrypt(integration.credential)) as TailscaleApiCredential;
 
-    const tokenResult = await this.tailscale.exchangeForAccessToken(credential);
-    if (tokenResult.isErr) {
-      integration.markError(tokenResult.error.message);
-      await this.integrations.save(integration);
-      return Result.err(new ExternalProviderException('Tailscale', tokenResult.error.message));
-    }
-
-    const devicesResult = await this.tailscale.listDevices(tokenResult.value);
+    const devicesResult = await this.tailscale.listDevices(credential.apiAccessToken);
     if (devicesResult.isErr) {
+      integration.markError(devicesResult.error.message);
+      await this.integrations.save(integration);
       return Result.err(new ExternalProviderException('Tailscale', devicesResult.error.message));
     }
 

@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "M:/@Programming/@Me/Projeto-FarDesk/app_desktop/windows"
+    "cmake.sourceDirectory": "${workspaceFolder}\\app_desktop\\windows",
+    "cmake.buildDirectory": "${workspaceFolder}\\app_desktop\\build\\windows\\cmake"
 }

@@ -10,8 +10,8 @@ import type { ConnectTailscaleIntegrationCommand } from '@modules/integrations/a
 import type { IntegrationResponseDto } from '@modules/integrations/application/dtos/integration-response.dto';
 import { IntegrationMapper } from '@modules/integrations/application/mappers/integration.mapper';
 import type { ConnectTailscaleIntegrationUseCase } from '@modules/integrations/application/ports/in/connect-tailscale-integration.use-case';
-import { CREDENTIAL_CIPHER } from '@modules/integrations/application/ports/out/credential-cipher.port';
-import type { CredentialCipher } from '@modules/integrations/application/ports/out/credential-cipher.port';
+import { CREDENTIAL_CIPHER } from '@shared/application/ports/credential-cipher.port';
+import type { CredentialCipher } from '@shared/application/ports/credential-cipher.port';
 import { TAILSCALE_GATEWAY } from '@modules/integrations/application/ports/out/platforms/tailscale-gateway.port';
 import type { TailscaleGateway } from '@modules/integrations/application/ports/out/platforms/tailscale-gateway.port';
 
@@ -30,18 +30,13 @@ export class ConnectTailscaleIntegrationUseCaseImpl implements ConnectTailscaleI
   async execute(
     input: ConnectTailscaleIntegrationCommand,
   ): Promise<Result<IntegrationResponseDto, ExternalProviderException>> {
-    const tokenResult = await this.tailscale.exchangeForAccessToken({
-      clientId: input.clientId,
-      clientSecret: input.clientSecret,
-    });
-    if (tokenResult.isErr) {
-      return Result.err(new ExternalProviderException('Tailscale', tokenResult.error.message));
+    const validation = await this.tailscale.validateAccessToken(input.apiAccessToken);
+    if (validation.isErr) {
+      return Result.err(new ExternalProviderException('Tailscale', validation.error.message));
     }
 
     const now = new Date();
-    const credential = this.cipher.encrypt(
-      JSON.stringify({ clientId: input.clientId, clientSecret: input.clientSecret }),
-    );
+    const credential = this.cipher.encrypt(JSON.stringify({ apiAccessToken: input.apiAccessToken }));
 
     const existing = await this.integrations.findByOwnerAndPlatform(
       input.ownerId,

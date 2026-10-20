@@ -37,6 +37,10 @@ export class AppConfigService {
     return this.config.get('INTEGRATIONS_MASTER_KEY', { infer: true });
   }
 
+  get databaseUrl(): string {
+    return this.config.get('DATABASE_URL', { infer: true });
+  }
+
   /** `null` enquanto o login com Google não foi configurado. */
   get google(): GoogleOAuthConfig | null {
     const clientId = this.config.get('GOOGLE_CLIENT_ID', { infer: true });

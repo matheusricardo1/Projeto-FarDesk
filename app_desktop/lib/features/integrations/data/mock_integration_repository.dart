@@ -55,7 +55,7 @@ class MockIntegrationRepository implements IntegrationRepository {
   }
 
   @override
-  Future<Result<Integration>> connectTailscale({required String clientId, required String clientSecret}) async {
+  Future<Result<Integration>> connectTailscale({required String apiAccessToken}) async {
     await Future<void>.delayed(latency);
     return _update('tailscale', (i) => i.connectedWith(_mockAccountFor('tailscale')));
   }

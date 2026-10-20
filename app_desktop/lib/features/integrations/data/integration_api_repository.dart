@@ -34,7 +34,7 @@ class IntegrationApiRepository implements IntegrationRepository {
       id: 'tailscale',
       name: 'Tailscale',
       description: 'Rede privada que conecta seus dispositivos sem configurar porta ou IP manualmente. '
-          'Entra com um OAuth client gerado no painel do Tailscale.',
+          'Entra com um API access token gerado no painel do Tailscale.',
       icon: Icons.hub_rounded,
       category: IntegrationCategory.network,
       status: IntegrationStatus.disconnected,
@@ -91,12 +91,12 @@ class IntegrationApiRepository implements IntegrationRepository {
       Failure(ApiException('"$integrationId" ainda não tem integração real — só o Tailscale está disponível por enquanto.'));
 
   @override
-  Future<Result<Integration>> connectTailscale({required String clientId, required String clientSecret}) async {
+  Future<Result<Integration>> connectTailscale({required String apiAccessToken}) async {
     try {
       final response = await _http.post(
         Uri.parse('$backendBaseUrl/integrations/tailscale/connect'),
         headers: _headers,
-        body: jsonEncode({'clientId': clientId, 'clientSecret': clientSecret}),
+        body: jsonEncode({'apiAccessToken': apiAccessToken}),
       );
       if (response.statusCode != 200) return Failure(_errorFor(response));
       final json = jsonDecode(response.body) as Map<String, dynamic>;

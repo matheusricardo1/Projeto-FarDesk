@@ -12,6 +12,9 @@ class MockAuthRepository implements AuthRepository {
   String? _activeId;
 
   @override
+  Future<Result<AccountSession?>> restoreSession() async => const Ok(null);
+
+  @override
   Future<Result<AccountSession>> signIn(AuthProvider provider) async {
     await Future<void>.delayed(latency);
     if (_accounts.isEmpty) {

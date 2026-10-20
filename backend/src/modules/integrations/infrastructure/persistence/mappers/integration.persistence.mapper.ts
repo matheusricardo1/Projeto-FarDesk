@@ -1,5 +1,5 @@
 import { Integration } from '@modules/integrations/domain/aggregates/integration.aggregate';
-import type { EncryptedCredential } from '@modules/integrations/domain/value-objects/encrypted-credential.vo';
+import type { EncryptedCredential } from '@shared/domain/types/encrypted-credential.vo';
 import { IntegrationId } from '@modules/integrations/domain/value-objects/integration-id.vo';
 import type { IntegrationPlatform } from '@modules/integrations/domain/value-objects/integration-platform.vo';
 import type { IntegrationStatus } from '@modules/integrations/domain/value-objects/integration-status.vo';

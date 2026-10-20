@@ -6,7 +6,9 @@ import '../core/design_system/design_system.dart';
 /// Barra de título própria (sem moldura nativa). Tamanhos fixos de propósito:
 /// chrome de janela não acompanha a escala responsiva do conteúdo.
 class TitleBar extends StatefulWidget {
-  const TitleBar({super.key});
+  const TitleBar({super.key, this.onBeforeClose});
+
+  final Future<void> Function()? onBeforeClose;
 
   @override
   State<TitleBar> createState() => _TitleBarState();
@@ -14,11 +16,13 @@ class TitleBar extends StatefulWidget {
 
 class _TitleBarState extends State<TitleBar> with WindowListener {
   bool _maximized = false;
+  bool _closing = false;
 
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    windowManager.setPreventClose(true);
     windowManager.isMaximized().then((value) {
       if (mounted) setState(() => _maximized = value);
     });
@@ -35,6 +39,17 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 
   @override
   void onWindowUnmaximize() => setState(() => _maximized = false);
+
+  @override
+  Future<void> onWindowClose() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      await widget.onBeforeClose?.call();
+    } finally {
+      await windowManager.destroy();
+    }
+  }
 
   Future<void> _toggleMaximize() async {
     if (await windowManager.isMaximized()) {

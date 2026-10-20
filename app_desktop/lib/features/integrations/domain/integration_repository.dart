@@ -12,10 +12,11 @@ abstract interface class IntegrationRepository {
   /// usuário (hoje nenhuma — Steam/Hydra ainda não têm backend).
   Future<Result<Integration>> connect(String integrationId);
 
-  /// O Tailscale usa um OAuth client (client ID + secret) gerado no painel
-  /// do Tailscale, não um simples clique — por isso tem um método próprio
-  /// em vez de reaproveitar [connect].
-  Future<Result<Integration>> connectTailscale({required String clientId, required String clientSecret});
+  /// O Tailscale usa um API access token (gerado em Settings → Keys →
+  /// API access tokens no painel do Tailscale — OAuth clients não existem
+  /// em tailnets no plano Personal/Free), não um simples clique — por isso
+  /// tem um método próprio em vez de reaproveitar [connect].
+  Future<Result<Integration>> connectTailscale({required String apiAccessToken});
 
   Future<Result<Integration>> disconnect(String integrationId);
 }

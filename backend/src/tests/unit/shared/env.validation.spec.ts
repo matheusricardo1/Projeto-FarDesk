@@ -3,6 +3,7 @@ import { validateEnvironment } from '@shared/infrastructure/config/env.validatio
 const VALID_ENV = {
   AUTH_JWT_SECRET: 'a'.repeat(32),
   INTEGRATIONS_MASTER_KEY: 'b'.repeat(32),
+  DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
 };
 
 describe('validateEnvironment', () => {

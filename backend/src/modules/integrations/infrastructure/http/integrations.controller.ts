@@ -53,8 +53,7 @@ export class IntegrationsController {
   ): Promise<IntegrationResponseDto> {
     const result = await this.connectTailscale.execute({
       ownerId: user.userId,
-      clientId: body.clientId,
-      clientSecret: body.clientSecret,
+      apiAccessToken: body.apiAccessToken,
     });
     if (result.isErr) throw result.error;
     return result.value;

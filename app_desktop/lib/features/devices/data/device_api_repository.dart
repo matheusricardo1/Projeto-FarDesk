@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/device/local_device_identity_store.dart';
 import '../../../core/http/access_token_provider.dart';
 import '../../../core/http/api_exception.dart';
 import '../../../core/result.dart';
@@ -10,19 +11,23 @@ import '../domain/device_repository.dart';
 
 /// Implementação real: fala com `backend/src/modules/devices` de verdade.
 ///
-/// `DeviceResponseDto` do backend não diz qual device é "este PC" — isso
-/// exigiria o host se auto-identificar pro backend, peça que ainda não
-/// existe. Por enquanto nenhum device volta com `isCurrentDevice: true`.
+/// `DeviceResponseDto` do backend não sabe (nem precisa saber) qual device
+/// é "este PC" — isso é decidido aqui, comparando o id de cada device
+/// devolvido com o `deviceId` local (`LocalDeviceIdentityStore`), gerado
+/// uma vez por instalação e registrado via `registerThisDevice()`.
 class DeviceApiRepository implements DeviceRepository {
   DeviceApiRepository({
     required this.backendBaseUrl,
     required this.accessToken,
     http.Client? httpClient,
-  }) : _http = httpClient ?? http.Client();
+    LocalDeviceIdentityStore? identityStore,
+  }) : _http = httpClient ?? http.Client(),
+       _identityStore = identityStore ?? LocalDeviceIdentityStore();
 
   final String backendBaseUrl;
   final AccessTokenProvider accessToken;
   final http.Client _http;
+  final LocalDeviceIdentityStore _identityStore;
 
   Map<String, String> get _headers {
     final token = accessToken();
@@ -31,12 +36,37 @@ class DeviceApiRepository implements DeviceRepository {
   }
 
   @override
+  Future<Result<void>> registerThisDevice() async {
+    try {
+      final identity = await _identityStore.load();
+      final response = await _http.post(
+        Uri.parse('$backendBaseUrl/devices/register'),
+        headers: _headers,
+        body: jsonEncode({
+          'deviceId': identity.deviceId,
+          'name': identity.name,
+          'platform': identity.platform.name,
+        }),
+      );
+      if (response.statusCode != 200) return Failure(_errorFor(response));
+      return const Ok(null);
+    } catch (error) {
+      return Failure(error);
+    }
+  }
+
+  @override
   Future<Result<List<Device>>> fetchDevices() async {
     try {
+      final identity = await _identityStore.load();
       final response = await _http.get(Uri.parse('$backendBaseUrl/devices'), headers: _headers);
       if (response.statusCode != 200) return Failure(_errorFor(response));
       final list = jsonDecode(response.body) as List<dynamic>;
-      return Ok(list.map((json) => _deviceFromJson(json as Map<String, dynamic>)).toList(growable: false));
+      return Ok(
+        list
+            .map((json) => _deviceFromJson(json as Map<String, dynamic>, currentDeviceId: identity.deviceId))
+            .toList(growable: false),
+      );
     } catch (error) {
       return Failure(error);
     }
@@ -58,17 +88,19 @@ class DeviceApiRepository implements DeviceRepository {
     try {
       final response = await _http.post(Uri.parse('$backendBaseUrl/devices/$deviceId/wake'), headers: _headers);
       if (response.statusCode != 200) return Failure(_errorFor(response));
-      return Ok(_deviceFromJson(jsonDecode(response.body) as Map<String, dynamic>));
+      final identity = await _identityStore.load();
+      return Ok(_deviceFromJson(jsonDecode(response.body) as Map<String, dynamic>, currentDeviceId: identity.deviceId));
     } catch (error) {
       return Failure(error);
     }
   }
 
-  Device _deviceFromJson(Map<String, dynamic> json) => Device(
+  Device _deviceFromJson(Map<String, dynamic> json, {required String currentDeviceId}) => Device(
         id: json['id'] as String,
         name: json['name'] as String,
         platform: DevicePlatform.values.byName(json['platform'] as String),
         status: DeviceStatus.values.byName(json['status'] as String),
+        isCurrentDevice: json['id'] == currentDeviceId,
       );
 
   ApiException _errorFor(http.Response response) {

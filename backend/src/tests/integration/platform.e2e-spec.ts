@@ -37,7 +37,7 @@ describe('Plataforma (e2e)', () => {
       .send({})
       .expect(400);
 
-    expect((response.body as { message: string }).message).toContain('clientId');
+    expect((response.body as { message: string }).message).toContain('apiAccessToken');
   });
 
   it('DELETE /integrations/:platform com plataforma desconhecida é 400', async () => {

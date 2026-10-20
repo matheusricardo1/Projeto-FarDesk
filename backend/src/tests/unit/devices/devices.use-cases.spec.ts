@@ -1,5 +1,6 @@
 import { EndSessionUseCaseImpl } from '@modules/devices/application/use-cases/end-session.use-case.impl';
 import { ListDevicesUseCaseImpl } from '@modules/devices/application/use-cases/list-devices.use-case.impl';
+import { RegisterDeviceUseCaseImpl } from '@modules/devices/application/use-cases/register-device.use-case.impl';
 import { ReportHeartbeatUseCaseImpl } from '@modules/devices/application/use-cases/report-heartbeat.use-case.impl';
 import { RequestWakeUseCaseImpl } from '@modules/devices/application/use-cases/request-wake.use-case.impl';
 import { StartSessionUseCaseImpl } from '@modules/devices/application/use-cases/start-session.use-case.impl';
@@ -129,5 +130,43 @@ describe('Casos de uso de dispositivos', () => {
     const result = await new RequestWakeUseCaseImpl(repository).execute({ deviceId: 'ps5', ownerId: OWNER });
 
     expect(result.value.status).toBe(DeviceStatus.Hibernating);
+  });
+
+  it('RegisterDevice cria o dispositivo com o id que o cliente mandou', async () => {
+    const result = await new RegisterDeviceUseCaseImpl(repository).execute({
+      ownerId: OWNER,
+      deviceId: 'local-uuid-1',
+      name: 'PC do Matheus',
+      platform: DevicePlatform.Windows,
+    });
+
+    expect(result.value.id).toBe('local-uuid-1');
+    expect(await repository.findById(DeviceId.create('local-uuid-1'))).not.toBeNull();
+  });
+
+  it('RegisterDevice é idempotente — chamar de novo não duplica nem falha', async () => {
+    const useCase = new RegisterDeviceUseCaseImpl(repository);
+    const command = { ownerId: OWNER, deviceId: 'local-uuid-2', name: 'PC', platform: DevicePlatform.Windows };
+
+    await useCase.execute(command);
+    const second = await useCase.execute(command);
+
+    expect(second.value.id).toBe('local-uuid-2');
+    expect((await repository.findAllByOwner(OWNER)).filter((d) => d.id.value === 'local-uuid-2')).toHaveLength(1);
+  });
+
+  it('RegisterDevice recusa um deviceId que já pertence a outra conta', async () => {
+    repository.add(
+      Device.create({ id: DeviceId.create('roubado'), ownerId: 'outra-conta', name: 'PC', platform: DevicePlatform.Windows }),
+    );
+
+    const result = await new RegisterDeviceUseCaseImpl(repository).execute({
+      ownerId: OWNER,
+      deviceId: 'roubado',
+      name: 'PC',
+      platform: DevicePlatform.Windows,
+    });
+
+    expect(result.error).toBeInstanceOf(NotDeviceOwnerException);
   });
 });

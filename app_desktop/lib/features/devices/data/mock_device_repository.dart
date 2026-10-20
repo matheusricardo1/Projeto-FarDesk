@@ -24,6 +24,12 @@ class MockDeviceRepository implements DeviceRepository {
   ];
 
   @override
+  Future<Result<void>> registerThisDevice() async {
+    await Future<void>.delayed(latency);
+    return const Ok(null);
+  }
+
+  @override
   Future<Result<List<Device>>> fetchDevices() async {
     await Future<void>.delayed(latency);
     return Ok(List.unmodifiable(_devices));

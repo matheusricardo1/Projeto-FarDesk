@@ -2,9 +2,11 @@ import '../../../core/result.dart';
 import 'account.dart';
 
 /// Autenticação e gerenciamento de múltiplas contas no dispositivo. A
-/// implementação real usa Supabase Auth (Google OAuth abre o navegador e
-/// volta pro app via deep link).
+/// implementação real usa o backend FarDesk (Google OAuth abre o navegador e
+/// entrega o resultado ao app por polling).
 abstract interface class AuthRepository {
+  Future<Result<AccountSession?>> restoreSession();
+
   Future<Result<AccountSession>> signIn(AuthProvider provider);
 
   /// Conecta mais uma conta sem desconectar as atuais.

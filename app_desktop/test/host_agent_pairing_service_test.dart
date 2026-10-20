@@ -1,4 +1,5 @@
 import 'package:app_desktop/core/host_agent/host_agent_pairing_service.dart';
+import 'package:app_desktop/core/http/access_token_provider.dart';
 import 'package:app_desktop/core/host_agent/models/pairing_request_summary.dart';
 import 'package:app_desktop/core/host_agent/models/pending_sunshine_pairing.dart';
 import 'package:app_desktop/core/host_agent/pairing_api_client.dart';
@@ -22,7 +23,7 @@ class FakePairingApiClient implements PairingApiClient {
   String get backendBaseUrl => 'http://fake';
 
   @override
-  String get accessToken => 'fake-token';
+  AccessTokenProvider get accessToken => () => 'fake-token';
 
   @override
   Future<PairingRequestSummary?> fetchPending(String deviceId) async => pending;
@@ -66,6 +67,27 @@ class FakeSunshineAdminClient implements SunshineAdminClient {
     submittedPin = pin;
     return acceptPin;
   }
+
+  @override
+  Future<bool> bootstrapCredentials() async => true;
+
+  @override
+  Future<List<Map<String, dynamic>>> listApps() async => const [];
+
+  @override
+  Future<bool> addApp(Map<String, dynamic> app) async => true;
+
+  @override
+  Future<bool> closeApp() async => true;
+
+  @override
+  Future<List<Map<String, dynamic>>> listClients() async => const [];
+
+  @override
+  Future<bool> unpairClient(String uuid) async => true;
+
+  @override
+  Future<bool> unpairAllClients() async => true;
 }
 
 void main() {
@@ -78,6 +100,41 @@ void main() {
       await service.runPairingCycle();
 
       expect(pairingApi.ackedRequestId, isNull);
+    });
+
+    test('não liga o Sunshine (ensureHostRunning) sem pareamento pendente', () async {
+      var calls = 0;
+      final pairingApi = FakePairingApiClient();
+      final service = HostAgentPairingService(
+        deviceId: 'device-1',
+        pairingApi: pairingApi,
+        sunshineAdmin: FakeSunshineAdminClient(),
+        ensureHostRunning: () async => calls++,
+      );
+
+      await service.runPairingCycle();
+
+      expect(calls, 0);
+    });
+
+    test('liga o Sunshine (ensureHostRunning) só quando aparece um pareamento pendente de verdade', () async {
+      var calls = 0;
+      final pairingApi = FakePairingApiClient(
+        pending: const PairingRequestSummary(id: 'req-1', deviceId: 'device-1', pin: '4242', status: 'pending'),
+      );
+      final sunshineAdmin = FakeSunshineAdminClient(
+        localPairings: const [PendingSunshinePairing(pairingId: 'p', deviceName: sunshineClientDeviceName, address: 'x')],
+      );
+      final service = HostAgentPairingService(
+        deviceId: 'device-1',
+        pairingApi: pairingApi,
+        sunshineAdmin: sunshineAdmin,
+        ensureHostRunning: () async => calls++,
+      );
+
+      await service.runPairingCycle();
+
+      expect(calls, 1);
     });
 
     test('não faz nada enquanto o cliente ainda não chegou no Sunshine local', () async {

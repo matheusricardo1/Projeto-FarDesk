@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { AesGcmCredentialCipher } from '@modules/integrations/infrastructure/security/aes-gcm-credential-cipher';
+import { AesGcmCredentialCipher } from '@shared/infrastructure/security/aes-gcm-credential-cipher';
 import type { AppConfigService } from '@shared/infrastructure/config/app-config.service';
 
 const VALID_KEY = randomBytes(32).toString('base64');

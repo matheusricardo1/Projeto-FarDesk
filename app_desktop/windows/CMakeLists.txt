@@ -1,6 +1,19 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(app_desktop LANGUAGES CXX)
+project(app_desktop LANGUAGES C CXX)
+
+include(FetchContent)
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Moonlight dependencies statically" FORCE)
+FetchContent_Declare(
+  moonlight_common_c
+  GIT_REPOSITORY https://github.com/moonlight-stream/moonlight-common-c.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(moonlight_common_c)
+
+add_subdirectory("native/fardesk_stream_core")
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
@@ -101,6 +114,10 @@ install(CODE "
   " COMPONENT Runtime)
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
+install(TARGETS fardesk_stream_core
+  RUNTIME DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
 
 # Install the AOT library on non-Debug builds only.
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"

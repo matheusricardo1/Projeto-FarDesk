@@ -50,6 +50,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.Windows,
         status: DeviceStatus.Online,
         activeViewerCount: 0,
+        hostCredential: null,
       },
       {
         id: 'pc-sala',
@@ -57,6 +58,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.Windows,
         status: DeviceStatus.InUse,
         activeViewerCount: 1,
+        hostCredential: null,
       },
       {
         id: 'ps5',
@@ -64,6 +66,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.PS5,
         status: DeviceStatus.Hibernating,
         activeViewerCount: 0,
+        hostCredential: null,
       },
       {
         id: 'pc-trabalho',
@@ -71,6 +74,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.Windows,
         status: DeviceStatus.Offline,
         activeViewerCount: 0,
+        hostCredential: null,
       },
       {
         id: 'notebook',
@@ -78,6 +82,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.Windows,
         status: DeviceStatus.Online,
         activeViewerCount: 0,
+        hostCredential: null,
       },
       {
         id: 'servidor-home',
@@ -85,6 +90,7 @@ export class InMemoryDeviceRepository implements DeviceRepository {
         platform: DevicePlatform.Linux,
         status: DeviceStatus.Hibernating,
         activeViewerCount: 0,
+        hostCredential: null,
       },
     ];
 

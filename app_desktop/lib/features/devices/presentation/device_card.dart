@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design_system/design_system.dart';
 import '../domain/device.dart';
 import 'device_presentation.dart';
+import 'host_activation_view_model.dart';
 
 class DeviceCard extends StatelessWidget {
   const DeviceCard({
@@ -11,12 +12,19 @@ class DeviceCard extends StatelessWidget {
     required this.pending,
     required this.onConnect,
     required this.onWake,
+    this.hostStatus,
+    this.onToggleHost,
   });
 
   final Device device;
   final bool pending;
   final VoidCallback onConnect;
   final VoidCallback onWake;
+
+  /// Só relevante quando `device.isCurrentDevice` — estado de "este PC como
+  /// host" (ver `HostActivationViewModel`).
+  final HostActivationStatus? hostStatus;
+  final VoidCallback? onToggleHost;
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +74,31 @@ class DeviceCard extends StatelessWidget {
 
   Widget _buildAction() {
     if (device.isCurrentDevice) {
-      return const AppButton(label: 'Este dispositivo', variant: AppButtonVariant.muted, expand: true);
+      return switch (hostStatus ?? HostActivationStatus.notReady) {
+        HostActivationStatus.notReady => AppButton(
+            label: 'Usar este PC como host',
+            variant: AppButtonVariant.secondary,
+            expand: true,
+            onPressed: onToggleHost,
+          ),
+        HostActivationStatus.preparing => const AppButton(
+            label: 'Preparando...',
+            variant: AppButtonVariant.secondary,
+            expand: true,
+            loading: true,
+          ),
+        HostActivationStatus.ready => const AppButton(
+            label: 'Pronto — liga sozinho ao conectar',
+            variant: AppButtonVariant.muted,
+            expand: true,
+          ),
+        HostActivationStatus.error => AppButton(
+            label: 'Falhou — tentar de novo',
+            variant: AppButtonVariant.danger,
+            expand: true,
+            onPressed: onToggleHost,
+          ),
+      };
     }
     return switch (device.status) {
       DeviceStatus.online => AppButton(label: 'Conectar', expand: true, loading: pending, onPressed: onConnect),

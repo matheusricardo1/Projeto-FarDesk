@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DevicePlatform {
+  windows
+  linux
+  macos
+  ps5
+  android
+  ios
+  web
+}
+
+enum DeviceStatus {
+  online
+  inUse
+  hibernating
+  offline
+}
+
+enum IntegrationPlatform {
+  tailscale
+}
+
+enum IntegrationStatus {
+  connected
+  disconnected
+  error
+}
+
+enum LoginSessionStatus {
+  pending
+  completed
+  failed
+}
+
+// IDs são gerados pelo domínio (ex: `AccountId.create()`), nunca pelo banco —
+// por isso nenhum campo `id` abaixo tem `@default(...)`.
+
+model Account {
+  id          String   @id
+  googleSub   String   @unique
+  email       String
+  displayName String
+  avatarUrl   String?
+  createdAt   DateTime
+  lastLoginAt DateTime
+
+  loginSessions LoginSession[]
+  devices       Device[]
+  integrations  Integration[]
+
+  @@map("accounts")
+}
+
+// Vive só durante o fluxo de login (segundos a minutos) — sobrevive a um
+// restart do backend de propósito, pra não perder um login em andamento.
+model LoginSession {
+  id           String             @id
+  status       LoginSessionStatus
+  createdAt    DateTime
+  accountId    String?
+  account      Account?           @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accessToken  String?
+  refreshToken String?
+  error        String?
+
+  @@map("login_sessions")
+}
+
+model Device {
+  id                String         @id
+  ownerId           String
+  owner             Account        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name              String
+  platform          DevicePlatform
+  status            DeviceStatus
+  lastHeartbeatAt   DateTime?
+  activeViewerCount Int
+
+  // Credencial do admin do Sunshine local deste device (quando ele é host),
+  // cifrada — igual `Integration.credential`. A pessoa nunca vê nem sabe
+  // que isso existe; serve pra outro app logado na mesma conta (ou uma
+  // reinstalação neste PC) recuperar a credencial certa em vez de gerar
+  // uma nova que não bateria com o que o Sunshine local já tem configurado.
+  hostCredentialCiphertext String?
+  hostCredentialIv         String?
+  hostCredentialAuthTag    String?
+
+  @@index([ownerId])
+  @@map("devices")
+}
+
+model Integration {
+  id      String              @id
+  ownerId String
+  owner   Account             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  platform IntegrationPlatform
+  status  IntegrationStatus
+
+  // `EncryptedCredential` (ciphertext/iv/authTag) achatado em colunas —
+  // nunca a credencial em claro, ver `AesGcmCredentialCipher`.
+  credentialCiphertext String?
+  credentialIv          String?
+  credentialAuthTag     String?
+
+  connectedAt     DateTime?
+  lastValidatedAt DateTime?
+  lastError       String?
+
+  @@unique([ownerId, platform])
+  @@map("integrations")
+}

@@ -1,13 +1,21 @@
-import { Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Put } from '@nestjs/common';
 
 import type { AuthenticatedUser } from '@modules/auth/application/dtos/authenticated-user.dto';
 import { CurrentUser } from '@modules/auth/infrastructure/http/current-user.decorator';
 import type { DeviceResponseDto } from '@modules/devices/application/dtos/device-response.dto';
 import type { HeartbeatResponseDto } from '@modules/devices/application/dtos/heartbeat-response.dto';
+import { RegisterDeviceDto } from '@modules/devices/application/dtos/register-device.dto';
 import { END_SESSION_USE_CASE } from '@modules/devices/application/ports/in/end-session.use-case';
 import type { EndSessionUseCase } from '@modules/devices/application/ports/in/end-session.use-case';
 import { LIST_DEVICES_USE_CASE } from '@modules/devices/application/ports/in/list-devices.use-case';
 import type { ListDevicesUseCase } from '@modules/devices/application/ports/in/list-devices.use-case';
+import { REGISTER_DEVICE_USE_CASE } from '@modules/devices/application/ports/in/register-device.use-case';
+import type { RegisterDeviceUseCase } from '@modules/devices/application/ports/in/register-device.use-case';
+import { GET_HOST_CREDENTIAL_USE_CASE } from '@modules/devices/application/ports/in/get-host-credential.use-case';
+import type { GetHostCredentialUseCase } from '@modules/devices/application/ports/in/get-host-credential.use-case';
+import { SAVE_HOST_CREDENTIAL_USE_CASE } from '@modules/devices/application/ports/in/save-host-credential.use-case';
+import type { SaveHostCredentialUseCase } from '@modules/devices/application/ports/in/save-host-credential.use-case';
+import { HostCredentialDto } from '@modules/devices/application/dtos/host-credential.dto';
 import { REPORT_HEARTBEAT_USE_CASE } from '@modules/devices/application/ports/in/report-heartbeat.use-case';
 import type { ReportHeartbeatUseCase } from '@modules/devices/application/ports/in/report-heartbeat.use-case';
 import { REQUEST_WAKE_USE_CASE } from '@modules/devices/application/ports/in/request-wake.use-case';
@@ -27,11 +35,56 @@ export class DevicesController {
     @Inject(END_SESSION_USE_CASE) private readonly endSession: EndSessionUseCase,
     @Inject(REQUEST_WAKE_USE_CASE) private readonly requestWake: RequestWakeUseCase,
     @Inject(REPORT_HEARTBEAT_USE_CASE) private readonly reportHeartbeat: ReportHeartbeatUseCase,
+    @Inject(REGISTER_DEVICE_USE_CASE) private readonly registerDevice: RegisterDeviceUseCase,
+    @Inject(SAVE_HOST_CREDENTIAL_USE_CASE) private readonly saveHostCredential: SaveHostCredentialUseCase,
+    @Inject(GET_HOST_CREDENTIAL_USE_CASE) private readonly getHostCredential: GetHostCredentialUseCase,
   ) {}
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser): Promise<DeviceResponseDto[]> {
     const result = await this.listDevices.execute({ ownerId: user.userId });
+    return result.value;
+  }
+
+  @Put(':id/host-credentials')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async saveCredentials(
+    @Param('id') id: string,
+    @Body() body: HostCredentialDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    const result = await this.saveHostCredential.execute({
+      deviceId: id,
+      ownerId: user.userId,
+      credential: body,
+    });
+    if (result.isErr) throw result.error;
+  }
+
+  @Get(':id/host-credentials')
+  async getCredentials(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<HostCredentialDto | null> {
+    const result = await this.getHostCredential.execute({ deviceId: id, ownerId: user.userId });
+    if (result.isErr) throw result.error;
+    return result.value;
+  }
+
+  /**
+   * O cliente chama isso a cada login com o `deviceId` que ele mesmo gerou
+   * e persistiu localmente (ver `LocalDeviceIdStore` no app desktop) — é
+   * assim que "este dispositivo" aparece na própria lista da conta.
+   * Idempotente: já registrado só devolve o que já existe.
+   */
+  @Post('register')
+  @HttpCode(HttpStatus.OK)
+  async register(
+    @Body() body: RegisterDeviceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<DeviceResponseDto> {
+    const result = await this.registerDevice.execute({ ownerId: user.userId, ...body });
+    if (result.isErr) throw result.error;
     return result.value;
   }
 

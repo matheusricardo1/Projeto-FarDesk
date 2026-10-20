@@ -1,3 +1,4 @@
+import 'package:app_desktop/core/result.dart';
 import 'package:app_desktop/features/account/data/mock_auth_repository.dart';
 import 'package:app_desktop/features/account/domain/account.dart';
 import 'package:app_desktop/features/account/presentation/session_view_model.dart';
@@ -6,11 +7,24 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late SessionViewModel session;
 
-  setUp(() => session = SessionViewModel(MockAuthRepository(latency: Duration.zero)));
+  setUp(
+    () =>
+        session = SessionViewModel(MockAuthRepository(latency: Duration.zero)),
+  );
 
   test('começa deslogado', () {
     expect(session.isSignedIn, isFalse);
     expect(session.activeAccount, isNull);
+  });
+
+  test('restaura uma sessão salva pelo repositório', () async {
+    final repository = _RestoringAuthRepository();
+    session = SessionViewModel(repository);
+
+    await Future<void>.delayed(Duration.zero);
+
+    expect(session.isSignedIn, isTrue);
+    expect(session.activeAccount?.email, 'salva@example.com');
   });
 
   test('entrar cria a sessão com a primeira conta ativa', () async {
@@ -40,4 +54,16 @@ void main() {
 
     expect(session.activeAccount?.id, other.id);
   });
+}
+
+class _RestoringAuthRepository extends MockAuthRepository {
+  @override
+  Future<Result<AccountSession?>> restoreSession() async => Ok(
+    const AccountSession(
+      accounts: [
+        Account(id: 'saved', name: 'Conta salva', email: 'salva@example.com'),
+      ],
+      activeAccountId: 'saved',
+    ),
+  );
 }

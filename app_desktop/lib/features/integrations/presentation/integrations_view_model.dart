@@ -53,8 +53,8 @@ class IntegrationsViewModel extends ChangeNotifier {
 
   Future<void> connect(Integration integration) => _runAction(integration.id, () => _repository.connect(integration.id));
 
-  Future<void> connectTailscale(Integration integration, {required String clientId, required String clientSecret}) =>
-      _runAction(integration.id, () => _repository.connectTailscale(clientId: clientId, clientSecret: clientSecret));
+  Future<void> connectTailscale(Integration integration, {required String apiAccessToken}) =>
+      _runAction(integration.id, () => _repository.connectTailscale(apiAccessToken: apiAccessToken));
 
   Future<void> disconnect(Integration integration) =>
       _runAction(integration.id, () => _repository.disconnect(integration.id));

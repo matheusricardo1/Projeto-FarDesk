@@ -2,6 +2,7 @@ import { Device } from '@modules/devices/domain/aggregates/device.aggregate';
 import { DeviceId } from '@modules/devices/domain/value-objects/device-id.vo';
 import type { DevicePlatform } from '@modules/devices/domain/value-objects/device-platform.vo';
 import type { DeviceStatus } from '@modules/devices/domain/value-objects/device-status.vo';
+import type { EncryptedCredential } from '@shared/domain/types/encrypted-credential.vo';
 
 /** Forma do dispositivo no armazenamento — tipos primitivos, como uma linha de tabela. */
 export interface DeviceRecord {
@@ -12,6 +13,7 @@ export interface DeviceRecord {
   status: DeviceStatus;
   lastHeartbeatAt: string | null;
   activeViewerCount: number;
+  hostCredential: EncryptedCredential | null;
 }
 
 export class DevicePersistenceMapper {
@@ -25,6 +27,7 @@ export class DevicePersistenceMapper {
       status: snapshot.status,
       lastHeartbeatAt: snapshot.lastHeartbeatAt?.toISOString() ?? null,
       activeViewerCount: snapshot.activeViewerCount,
+      hostCredential: snapshot.hostCredential,
     };
   }
 
@@ -37,6 +40,7 @@ export class DevicePersistenceMapper {
       status: record.status,
       lastHeartbeatAt: record.lastHeartbeatAt ? new Date(record.lastHeartbeatAt) : null,
       activeViewerCount: record.activeViewerCount,
+      hostCredential: record.hostCredential,
     });
   }
 }

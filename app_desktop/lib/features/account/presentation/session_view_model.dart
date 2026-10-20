@@ -7,7 +7,9 @@ import '../domain/auth_repository.dart';
 /// Estado global de sessão — vive no topo da árvore porque login, sidebar
 /// (avatar) e tela de conta dependem dele.
 class SessionViewModel extends ChangeNotifier {
-  SessionViewModel(this._repository);
+  SessionViewModel(this._repository) {
+    _restoreSession();
+  }
 
   final AuthRepository _repository;
 
@@ -16,6 +18,16 @@ class SessionViewModel extends ChangeNotifier {
   bool _addingAccount = false;
   String? _pendingSwitchId;
   Object? _error;
+
+  Future<void> _restoreSession() async {
+    final result = await _repository.restoreSession();
+    if (result case Ok(:final value)) {
+      _session = value;
+    } else if (result case Failure(:final error)) {
+      _error = error;
+    }
+    notifyListeners();
+  }
 
   bool get isSignedIn => _session != null;
   AccountSession? get session => _session;

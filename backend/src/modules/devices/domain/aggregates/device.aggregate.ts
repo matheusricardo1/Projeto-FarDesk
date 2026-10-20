@@ -1,4 +1,5 @@
 import { AggregateRoot } from '@shared/domain/base/aggregate-root.base';
+import type { EncryptedCredential } from '@shared/domain/types/encrypted-credential.vo';
 import { DeviceSessionEndedEvent } from '@modules/devices/domain/events/device-session-ended.event';
 import { DeviceSessionStartedEvent } from '@modules/devices/domain/events/device-session-started.event';
 import { DeviceWakeRequestedEvent } from '@modules/devices/domain/events/device-wake-requested.event';
@@ -23,6 +24,8 @@ export interface DeviceProps {
   status: DeviceStatus;
   lastHeartbeatAt: Date | null;
   activeViewerCount: number;
+  /** Credencial do admin do Sunshine local, só preenchida quando este device já foi preparado como host. */
+  hostCredential: EncryptedCredential | null;
 }
 
 /**
@@ -46,6 +49,7 @@ export class Device extends AggregateRoot<DeviceId> {
       status: DeviceStatus.Offline,
       lastHeartbeatAt: null,
       activeViewerCount: 0,
+      hostCredential: null,
     });
   }
 
@@ -76,6 +80,20 @@ export class Device extends AggregateRoot<DeviceId> {
 
   get activeViewerCount(): number {
     return this.props.activeViewerCount;
+  }
+
+  get hostCredential(): EncryptedCredential | null {
+    return this.props.hostCredential;
+  }
+
+  /**
+   * Guarda (ou troca) a credencial do admin do Sunshine local deste PC —
+   * chamado uma vez, quando o agente gera essa credencial pela primeira
+   * vez. Nunca é lida/decidida aqui: quem decifra e usa é o próprio
+   * dispositivo, via `GET /devices/:id/host-credentials`.
+   */
+  recordHostCredential(credential: EncryptedCredential): void {
+    this.props.hostCredential = credential;
   }
 
   nextHeartbeatIntervalSeconds(): number {

@@ -1,6 +1,15 @@
 # Estado local de sessão do Claude Code — não é conteúdo do projeto.
 .claude/
 
+# Ferramentas e dependências nativas locais (mantidas fora do Git)
+.tools/
+$deps/
+
+# Artefatos gerados por builds
+build/
+app_desktop/build/
+backend/dist/
+
 # Arquivos de sistema operacional
 .DS_Store
 Thumbs.db

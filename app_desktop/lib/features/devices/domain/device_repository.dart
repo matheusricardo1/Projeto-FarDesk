@@ -6,6 +6,12 @@ import 'device.dart';
 abstract interface class DeviceRepository {
   Future<Result<List<Device>>> fetchDevices();
 
+  /// Registra este PC como device da conta (idempotente — chamar de novo
+  /// não duplica) e marca ele como "este aqui" nas próximas chamadas de
+  /// `fetchDevices()`. Deveria ser chamado uma vez por sessão, logo após o
+  /// login.
+  Future<Result<void>> registerThisDevice();
+
   /// Inicia a sessão de stream com o dispositivo.
   Future<Result<void>> connect(String deviceId);
 

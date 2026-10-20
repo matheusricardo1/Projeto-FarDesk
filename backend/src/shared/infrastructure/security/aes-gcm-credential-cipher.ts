@@ -3,8 +3,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { AppConfigService } from '@shared/infrastructure/config/app-config.service';
-import type { CredentialCipher } from '@modules/integrations/application/ports/out/credential-cipher.port';
-import type { EncryptedCredential } from '@modules/integrations/domain/value-objects/encrypted-credential.vo';
+import type { CredentialCipher } from '@shared/application/ports/credential-cipher.port';
+import type { EncryptedCredential } from '@shared/domain/types/encrypted-credential.vo';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH_BYTES = 32;
@@ -15,6 +15,10 @@ const IV_LENGTH_BYTES = 12;
  * adulteração. A chave mestra vem do `AppConfigService` — trocar por KMS é
  * mudar só a origem dela. Falha no boot se a chave não tiver 32 bytes:
  * nunca cifrar segredo de usuário com chave fraca "pra não travar".
+ *
+ * Compartilhado entre módulos (integrações de terceiro, credencial do
+ * admin do Sunshine local) — um segredo em repouso é sempre a mesma
+ * preocupação, não importa de qual bounded context ele vem.
  */
 @Injectable()
 export class AesGcmCredentialCipher implements CredentialCipher {
