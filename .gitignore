@@ -5,10 +5,19 @@
 .tools/
 $deps/
 
-# Artefatos gerados por builds
-build/
-app_desktop/build/
-backend/dist/
+# Artefatos e caches gerados por builds
+**/build/
+**/dist/
+**/coverage/
+**/.dart_tool/
+**/.pub-cache/
+**/node_modules/
+**/CMakeFiles/
+CMakeCache.txt
+
+# Arquivos de ambiente locais
+**/.env.local
+**/.env.*.local
 
 # Arquivos de sistema operacional
 .DS_Store
