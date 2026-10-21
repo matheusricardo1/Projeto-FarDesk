@@ -45,6 +45,13 @@ abrir. Quando uma versão mais nova com `FarDesk-Setup.exe` estiver publicada,
 o próprio aplicativo oferece o download e inicia o instalador. O usuário não
 precisa abrir a página de Releases nem procurar a versão manualmente.
 
+O instalador usa o mesmo `AppId` em todas as versões. Portanto, instalar um
+novo `FarDesk-Setup.exe` sobre uma instalação existente faz upgrade no mesmo
+diretório: fecha a versão antiga, substitui o bundle e inicia a versão nova.
+As configurações e a identidade de rede armazenadas em `%APPDATA%\FarDesk`
+não são removidas durante o upgrade. Não é necessário desinstalar a versão
+anterior.
+
 ## Backend
 
 O desktop de produção deve ser compilado apontando para o backend publicado:

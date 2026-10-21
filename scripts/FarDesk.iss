@@ -11,17 +11,23 @@
 [Setup]
 AppId={{E6C6BA2D-6C38-4D06-9D6A-7AC6A8F4E38B}
 AppName={#AppName}
+AppVerName={#AppName} {#AppVersion}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\FarDesk
 DefaultGroupName=FarDesk
+UsePreviousAppDir=yes
+UsePreviousGroup=yes
+Uninstallable=yes
+DirExistsWarning=no
 OutputBaseFilename=FarDesk-Setup
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 CloseApplications=yes
-RestartApplications=yes
+CloseApplicationsFilter=FarDesk.exe
+RestartApplications=no
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#AppExeName}
 VersionInfoDescription=FarDesk remote desktop client
