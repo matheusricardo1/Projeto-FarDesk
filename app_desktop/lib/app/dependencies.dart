@@ -9,6 +9,7 @@ import '../core/moonlight/windows_moonlight_client.dart';
 import '../core/network/bundled_tailscale_tun_runtime.dart';
 import '../core/network/tailscale_network_api.dart';
 import '../core/network/tailscale_network_manager.dart';
+import '../core/update/app_update_service.dart';
 import '../features/account/data/google_auth_repository.dart';
 import '../features/account/data/mock_auth_repository.dart';
 import '../features/account/domain/auth_repository.dart';
@@ -34,33 +35,46 @@ class AppDependencies {
     this.pairingApiClient,
     required this.moonlightClient,
     required this.networkManager,
+    required this.updateService,
   });
 
   /// Tudo em memória, sem backend — pra desenvolver e testar a UI. Sem
   /// `pairingApiClient`: não existe backend de verdade pra vigiar, então o
   /// `HostAgentPairingService` nunca é iniciado neste modo.
   factory AppDependencies.mock() => AppDependencies(
-        authRepository: MockAuthRepository(),
-        deviceRepository: MockDeviceRepository(),
-        integrationRepository: MockIntegrationRepository(),
-        settingsRepository: InMemorySettingsRepository(),
-        moonlightClient: WindowsMoonlightClient(),
-        networkManager: null,
-      );
+    authRepository: MockAuthRepository(),
+    deviceRepository: MockDeviceRepository(),
+    integrationRepository: MockIntegrationRepository(),
+    settingsRepository: InMemorySettingsRepository(),
+    moonlightClient: WindowsMoonlightClient(),
+    networkManager: null,
+    updateService: AppUpdateService(currentVersion: '1.0.2'),
+  );
 
   /// Tudo contra o backend FarDesk de verdade. Configurações continuam só
   /// locais (`InMemorySettingsRepository`) de propósito — resolução, bitrate
   /// etc. são preferências do PC, não dados de conta; não existe (nem deveria
   /// existir) um endpoint de backend pra isso.
-  factory AppDependencies.real({required String backendBaseUrl}) {
+  factory AppDependencies.real({
+    required String backendBaseUrl,
+    required String appVersion,
+  }) {
     final auth = GoogleAuthRepository(backendBaseUrl: backendBaseUrl);
     return AppDependencies(
       authRepository: auth,
-      deviceRepository: DeviceApiRepository(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
-      integrationRepository:
-          IntegrationApiRepository(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
+      deviceRepository: DeviceApiRepository(
+        backendBaseUrl: backendBaseUrl,
+        accessToken: () => auth.activeAccessToken,
+      ),
+      integrationRepository: IntegrationApiRepository(
+        backendBaseUrl: backendBaseUrl,
+        accessToken: () => auth.activeAccessToken,
+      ),
       settingsRepository: InMemorySettingsRepository(),
-      pairingApiClient: PairingApiClient(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
+      pairingApiClient: PairingApiClient(
+        backendBaseUrl: backendBaseUrl,
+        accessToken: () => auth.activeAccessToken,
+      ),
       moonlightClient: WindowsMoonlightClient(),
       networkManager: FarDeskNetworkManager(
         api: TailscaleNetworkApi(
@@ -68,9 +82,12 @@ class AppDependencies {
           accessToken: () => auth.activeAccessToken,
         ),
         runtime: BundledTailscaleTunRuntime(
-          executableDirectory: Directory('${Platform.resolvedExecutable}\\..\\network'),
+          executableDirectory: Directory(
+            '${Platform.resolvedExecutable}\\..\\network',
+          ),
         ),
       ),
+      updateService: AppUpdateService(currentVersion: appVersion),
     );
   }
 
@@ -83,15 +100,17 @@ class AppDependencies {
   final PairingApiClient? pairingApiClient;
   final MoonlightClient moonlightClient;
   final FarDeskNetworkManager? networkManager;
+  final AppUpdateService updateService;
 
   List<SingleChildWidget> get providers => [
-        Provider<AuthRepository>.value(value: authRepository),
-        Provider<DeviceRepository>.value(value: deviceRepository),
-        Provider<IntegrationRepository>.value(value: integrationRepository),
-        Provider<SettingsRepository>.value(value: settingsRepository),
-        Provider<PairingApiClient?>.value(value: pairingApiClient),
-        Provider<MoonlightClient>.value(value: moonlightClient),
-        Provider<FarDeskNetworkManager?>.value(value: networkManager),
-        ChangeNotifierProvider(create: (_) => SessionViewModel(authRepository)),
-      ];
+    Provider<AuthRepository>.value(value: authRepository),
+    Provider<DeviceRepository>.value(value: deviceRepository),
+    Provider<IntegrationRepository>.value(value: integrationRepository),
+    Provider<SettingsRepository>.value(value: settingsRepository),
+    Provider<PairingApiClient?>.value(value: pairingApiClient),
+    Provider<MoonlightClient>.value(value: moonlightClient),
+    Provider<FarDeskNetworkManager?>.value(value: networkManager),
+    Provider<AppUpdateService>.value(value: updateService),
+    ChangeNotifierProvider(create: (_) => SessionViewModel(authRepository)),
+  ];
 }

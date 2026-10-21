@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -21,9 +23,27 @@ Future<void> main() async {
     await windowManager.focus();
   });
 
-  // URL do backend — override com `flutter run --dart-define=BACKEND_BASE_URL=https://...`
-  // quando o backend não estiver em localhost:3000.
-  const backendBaseUrl = String.fromEnvironment('BACKEND_BASE_URL', defaultValue: 'http://localhost:3000');
+  // Builds locais podem sobrescrever a URL com
+  // `--dart-define=BACKEND_BASE_URL=http://localhost:3000`.
+  const backendBaseUrl = String.fromEnvironment(
+    'BACKEND_BASE_URL',
+    defaultValue: 'https://fardesk-api.vercel.app',
+  );
+  const appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '1.0.2',
+  );
+  developer.log(
+    'FarDesk $appVersion usando backend $backendBaseUrl',
+    name: 'FarDesk',
+  );
 
-  runApp(FarDeskApp(dependencies: AppDependencies.real(backendBaseUrl: backendBaseUrl)));
+  runApp(
+    FarDeskApp(
+      dependencies: AppDependencies.real(
+        backendBaseUrl: backendBaseUrl,
+        appVersion: appVersion,
+      ),
+    ),
+  );
 }

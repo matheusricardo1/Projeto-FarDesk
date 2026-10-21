@@ -40,6 +40,7 @@ try {
   flutter build windows --release `
     --build-name $Version `
     --build-number $BuildNumber `
+    --dart-define=APP_VERSION=$Version `
     --dart-define=BACKEND_BASE_URL=$BackendBaseUrl
   if ($LASTEXITCODE -ne 0) {
     throw "Flutter Windows release build failed."

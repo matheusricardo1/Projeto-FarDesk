@@ -38,6 +38,13 @@ anexa estes arquivos à release:
 Também é possível executar o workflow manualmente em **Actions > FarDesk
 Windows Release > Run workflow**.
 
+## Atualização automática
+
+O FarDesk verifica silenciosamente a versão mais recente da GitHub Release ao
+abrir. Quando uma versão mais nova com `FarDesk-Setup.exe` estiver publicada,
+o próprio aplicativo oferece o download e inicia o instalador. O usuário não
+precisa abrir a página de Releases nem procurar a versão manualmente.
+
 ## Backend
 
 O desktop de produção deve ser compilado apontando para o backend publicado:
@@ -46,6 +53,10 @@ O desktop de produção deve ser compilado apontando para o backend publicado:
 flutter build windows --release `
   --dart-define=BACKEND_BASE_URL=https://fardesk-api.vercel.app
 ```
+
+O aplicativo também usa `https://fardesk-api.vercel.app` como padrão. Para
+desenvolvimento local, sobrescreva explicitamente a URL com
+`--dart-define=BACKEND_BASE_URL=http://localhost:3000`.
 
 O backend precisa ter estas variáveis configuradas no Vercel:
 
