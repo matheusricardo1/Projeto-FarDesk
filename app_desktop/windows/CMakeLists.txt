@@ -42,10 +42,10 @@ else()
   endif()
 endif()
 # Define settings for the Profile build mode.
-set(CMAKE_EXE_LINKER_FLAGS_PROFILE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
-set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
-set(CMAKE_C_FLAGS_PROFILE "${CMAKE_C_FLAGS_RELEASE}")
-set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
+set(CMAKE_EXE_LINKER_FLAGS_PROFILE "" CACHE STRING "Profile executable linker flags")
+set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "" CACHE STRING "Profile shared linker flags")
+set(CMAKE_C_FLAGS_PROFILE "" CACHE STRING "Profile C compiler flags")
+set(CMAKE_CXX_FLAGS_PROFILE "" CACHE STRING "Profile CXX compiler flags")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
