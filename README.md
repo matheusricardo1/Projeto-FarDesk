@@ -124,5 +124,8 @@ Para gerar o instalador localmente, é necessário ter Flutter, Go e Inno Setup
 instalados:
 
 ```powershell
-.\scripts\build-windows-production.ps1 -Version "1.0.0" -BuildNumber 1
+.\scripts\build-windows-production.ps1 `
+  -Version "1.0.0" `
+  -BuildNumber 1 `
+  -BackendBaseUrl "https://fardesk-api.vercel.app"
 ```

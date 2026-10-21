@@ -1,6 +1,7 @@
 param(
   [string]$Version = "1.0.0",
   [int]$BuildNumber = 1,
+  [string]$BackendBaseUrl = "https://fardesk-api.vercel.app",
   [switch]$SkipTailscaleBuild
 )
 
@@ -36,7 +37,10 @@ foreach ($binary in @("tailscale.exe", "tailscaled.exe")) {
 
 Push-Location $appDirectory
 try {
-  flutter build windows --release --build-name $Version --build-number $BuildNumber
+  flutter build windows --release `
+    --build-name $Version `
+    --build-number $BuildNumber `
+    --dart-define=BACKEND_BASE_URL=$BackendBaseUrl
   if ($LASTEXITCODE -ne 0) {
     throw "Flutter Windows release build failed."
   }

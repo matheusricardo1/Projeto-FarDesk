@@ -87,7 +87,8 @@ jobs:
         run: |
           .\scripts\build-windows-production.ps1 `
             -Version "${{ steps.version.outputs.version }}" `
-            -BuildNumber "${{ github.run_number }}"
+            -BuildNumber "${{ github.run_number }}" `
+            -BackendBaseUrl "https://fardesk-api.vercel.app"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
