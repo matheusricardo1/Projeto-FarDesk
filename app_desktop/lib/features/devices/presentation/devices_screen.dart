@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -51,6 +52,34 @@ class DevicesScreen extends StatelessWidget {
             InlineNotice(
               text:
                   'Não foi possível preparar este PC como host: ${hostActivation.error}',
+            ),
+            SizedBox(height: rem(Space.lg)),
+          ],
+          // TEMPORÁRIO (só debug): abre a tela de stream direto com um
+          // Device fictício, sem depender de nenhum card real da lista —
+          // o StreamingSessionLauncher sempre mira 127.0.0.1 por enquanto
+          // (ver streaming_screen.dart), então isso basta pra testar o
+          // pipeline completo (pareamento → launch → decode) nesta própria
+          // máquina. Remover quando existir resolução real de endereço.
+          if (kDebugMode) ...[
+            AppButton(
+              label: 'Testar stream local (127.0.0.1)',
+              variant: AppButtonVariant.secondary,
+              size: AppButtonSize.small,
+              icon: Icons.bug_report_rounded,
+              onPressed: () => Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  builder: (_) => const StreamingScreen(
+                    device: Device(
+                      id: 'debug-local-sunshine',
+                      name: 'Sunshine local (debug)',
+                      platform: DevicePlatform.windows,
+                      status: DeviceStatus.online,
+                    ),
+                    target: LaunchTarget.desktop,
+                  ),
+                ),
+              ),
             ),
             SizedBox(height: rem(Space.lg)),
           ],

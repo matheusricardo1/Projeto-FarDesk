@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:basic_utils/basic_utils.dart';
+import 'package:convert/convert.dart';
 
 import 'sunshine_identity.dart';
 
@@ -34,3 +35,18 @@ HttpClient createSunshineHttpClient({required SunshineIdentity identity, Uint8Li
 /// DER do certificado do host, a partir do PEM recebido em `/pair` — é contra
 /// isso que `createSunshineHttpClient` compara toda conexão TLS seguinte.
 Uint8List serverCertificateDer(String serverCertificatePem) => CryptoUtils.getBytesFromPEMString(serverCertificatePem);
+
+/// Bytes da assinatura de um certificado, a partir do campo `signature` do
+/// basic_utils — que vem em hex e com o primeiro byte do BIT STRING do ASN.1
+/// ("bits não usados", sempre 0x00) ainda grudado. Os hashes do pareamento
+/// usam só a assinatura em si (256 bytes pra RSA-2048, igual ao
+/// `X509Certificate.getSignature()` do Java usado pelo Moonlight); com o
+/// byte extra, todo hash sai diferente do host e o pareamento acaba em
+/// `pinWrong`.
+Uint8List certificateSignatureFromHex(String signatureHex) {
+  final bytes = Uint8List.fromList(hex.decode(signatureHex));
+  if (bytes.isNotEmpty && bytes.length.isOdd && bytes.first == 0) {
+    return Uint8List.sublistView(bytes, 1);
+  }
+  return bytes;
+}

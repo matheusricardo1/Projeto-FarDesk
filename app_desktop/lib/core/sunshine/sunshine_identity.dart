@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:basic_utils/basic_utils.dart';
 import 'package:convert/convert.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+
+import 'sunshine_tls.dart' show certificateSignatureFromHex;
 
 /// Identidade do FarDesk como cliente Moonlight: um par de chaves RSA-2048 e
 /// um certificado autoassinado, gerados **uma vez** e reaproveitados pra
@@ -29,8 +32,8 @@ class SunshineIdentity {
 
   /// Bytes da assinatura do certificado — usados nos desafios de pareamento
   /// pra amarrar a prova criptográfica a este certificado específico.
-  List<int> get certificateSignatureBytes =>
-      X509Utils.x509CertificateFromPem(certificatePem).signature!.codeUnits;
+  Uint8List get certificateSignatureBytes =>
+      certificateSignatureFromHex(X509Utils.x509CertificateFromPem(certificatePem).signature!);
 
   factory SunshineIdentity._generate() {
     final uniqueId = const Uuid().v4();

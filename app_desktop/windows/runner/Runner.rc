@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.fardesk" "\0"
-            VALUE "FileDescription", "app_desktop" "\0"
+            VALUE "FileDescription", "FarDesk" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "app_desktop" "\0"
+            VALUE "InternalName", "FarDesk" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.fardesk. All rights reserved." "\0"
-            VALUE "OriginalFilename", "app_desktop.exe" "\0"
-            VALUE "ProductName", "app_desktop" "\0"
+            VALUE "OriginalFilename", "FarDesk.exe" "\0"
+            VALUE "ProductName", "FarDesk" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

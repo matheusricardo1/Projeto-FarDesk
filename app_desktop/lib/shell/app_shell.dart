@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/design_system/design_system.dart';
 import '../core/host_agent/pairing_api_client.dart';
+import '../core/network/tailscale_network_manager.dart';
 import '../features/account/presentation/account_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/devices/presentation/devices_view_model.dart';
@@ -23,20 +26,47 @@ class AppShell extends StatefulWidget {
 }
 
 class AppShellState extends State<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_startFarDeskNetwork(context.read<FarDeskNetworkManager?>()));
+  }
+
   Future<void> shutdown() async {
-    await context.read<HostActivationViewModel>().shutdown();
+    final hostActivation = context.read<HostActivationViewModel>();
+    final network = context.read<FarDeskNetworkManager?>();
+    await hostActivation.shutdown();
+    await network?.stop();
+  }
+
+  Future<void> _startFarDeskNetwork(FarDeskNetworkManager? network) async {
+    if (network == null) return;
+    try {
+      await network.ensureUp();
+    } catch (error, stackTrace) {
+      debugPrint('[AppShell] não foi possível iniciar a rede FarDesk: $error');
+      debugPrint('$stackTrace');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => DevicesViewModel(context.read())..load()),
         ChangeNotifierProvider(
-          create: (context) => HostActivationViewModel(pairingApiClient: context.read<PairingApiClient?>()),
+          create: (context) => DevicesViewModel(context.read())..load(),
         ),
-        ChangeNotifierProvider(create: (context) => IntegrationsViewModel(context.read())..load()),
-        ChangeNotifierProvider(create: (context) => SettingsViewModel(context.read())..load()),
+        ChangeNotifierProvider(
+          create: (context) => HostActivationViewModel(
+            pairingApiClient: context.read<PairingApiClient?>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => IntegrationsViewModel(context.read())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SettingsViewModel(context.read())..load(),
+        ),
       ],
       child: const _ShellLayout(),
     );
@@ -58,15 +88,26 @@ class _ShellLayoutState extends State<_ShellLayout> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SideRail(destination: _destination, onSelect: (d) => setState(() => _destination = d)),
+        SideRail(
+          destination: _destination,
+          onSelect: (d) => setState(() => _destination = d),
+        ),
         const VerticalDivider(width: 1, color: AppColors.border),
         Expanded(
           child: FadeSwitcher(
             child: switch (_destination) {
-              ShellDestination.devices => const DevicesScreen(key: ValueKey(ShellDestination.devices)),
-              ShellDestination.integrations => const IntegrationsScreen(key: ValueKey(ShellDestination.integrations)),
-              ShellDestination.settings => const SettingsScreen(key: ValueKey(ShellDestination.settings)),
-              ShellDestination.account => const AccountScreen(key: ValueKey(ShellDestination.account)),
+              ShellDestination.devices => const DevicesScreen(
+                key: ValueKey(ShellDestination.devices),
+              ),
+              ShellDestination.integrations => const IntegrationsScreen(
+                key: ValueKey(ShellDestination.integrations),
+              ),
+              ShellDestination.settings => const SettingsScreen(
+                key: ValueKey(ShellDestination.settings),
+              ),
+              ShellDestination.account => const AccountScreen(
+                key: ValueKey(ShellDestination.account),
+              ),
             },
           ),
         ),

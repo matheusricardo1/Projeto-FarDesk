@@ -23,6 +23,7 @@ export interface TailscaleDevice {
 export interface TailscaleAuthKeyOptions {
   readonly reusable: boolean;
   readonly ephemeral: boolean;
+  readonly expiryDuration: string;
   readonly tags?: readonly string[];
 }
 

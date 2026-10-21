@@ -24,7 +24,10 @@ import { LIST_INTEGRATIONS_USE_CASE } from '@modules/integrations/application/po
 import type { ListIntegrationsUseCase } from '@modules/integrations/application/ports/in/list-integrations.use-case';
 import { LIST_TAILSCALE_DEVICES_USE_CASE } from '@modules/integrations/application/ports/in/list-tailscale-devices.use-case';
 import type { ListTailscaleDevicesUseCase } from '@modules/integrations/application/ports/in/list-tailscale-devices.use-case';
+import { ISSUE_TAILSCALE_AUTH_KEY_USE_CASE } from '@modules/integrations/application/ports/in/issue-tailscale-auth-key.use-case';
+import type { IssueTailscaleAuthKeyUseCase } from '@modules/integrations/application/ports/in/issue-tailscale-auth-key.use-case';
 import { IntegrationPlatform } from '@modules/integrations/domain/value-objects/integration-platform.vo';
+import type { TailscaleAuthKeyResponseDto } from '@modules/integrations/application/dtos/tailscale-auth-key-response.dto';
 
 /** `clientSecret` passa por aqui só em trânsito — nunca é logado nem devolvido. */
 @Controller('integrations')
@@ -37,6 +40,8 @@ export class IntegrationsController {
     private readonly disconnectIntegration: DisconnectIntegrationUseCase,
     @Inject(LIST_TAILSCALE_DEVICES_USE_CASE)
     private readonly listTailscaleDevices: ListTailscaleDevicesUseCase,
+    @Inject(ISSUE_TAILSCALE_AUTH_KEY_USE_CASE)
+    private readonly issueTailscaleAuthKey: IssueTailscaleAuthKeyUseCase,
   ) {}
 
   @Get()
@@ -55,6 +60,14 @@ export class IntegrationsController {
       ownerId: user.userId,
       apiAccessToken: body.apiAccessToken,
     });
+    if (result.isErr) throw result.error;
+    return result.value;
+  }
+
+  @Post('tailscale/auth-key')
+  @HttpCode(HttpStatus.OK)
+  async issueAuthKey(@CurrentUser() user: AuthenticatedUser): Promise<TailscaleAuthKeyResponseDto> {
+    const result = await this.issueTailscaleAuthKey.execute({ ownerId: user.userId });
     if (result.isErr) throw result.error;
     return result.value;
   }

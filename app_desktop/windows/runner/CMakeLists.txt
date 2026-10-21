@@ -18,11 +18,57 @@ add_executable(${BINARY_NAME} WIN32
 
 add_dependencies(${BINARY_NAME} fardesk_stream_core)
 
-add_custom_command(TARGET fardesk_stream_core POST_BUILD
+set(FARDESK_LIBTAILSCALE_DLL
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../.tools/libtailscale/windows-x64/libtailscale.dll"
+)
+
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "$<TARGET_FILE:fardesk_stream_core>"
     "$<TARGET_FILE_DIR:${BINARY_NAME}>"
 )
+
+if(EXISTS "${FARDESK_LIBTAILSCALE_DLL}")
+  add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${FARDESK_LIBTAILSCALE_DLL}"
+      "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+  )
+else()
+  message(WARNING
+    "libtailscale.dll was not found. Run scripts/build-libtailscale.ps1 before using the FarDesk network runtime."
+  )
+endif()
+
+set(FARDESK_TAILSCALE_DIR
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../.tools/tailscale/windows-x64"
+)
+foreach(_tailscale_binary tailscale.exe tailscaled.exe)
+  if(EXISTS "${FARDESK_TAILSCALE_DIR}/${_tailscale_binary}")
+    add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${BINARY_NAME}>/network"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${FARDESK_TAILSCALE_DIR}/${_tailscale_binary}"
+        "$<TARGET_FILE_DIR:${BINARY_NAME}>/network/${_tailscale_binary}"
+    )
+  else()
+    message(WARNING
+      "${_tailscale_binary} was not found. Run scripts/build-tailscale-windows.ps1 before using the embedded TUN runtime."
+    )
+  endif()
+endforeach()
+
+# As DLLs do FFmpeg (usadas pelo fardesk_stream_core) precisam ficar ao lado
+# do executável final, não só ao lado do fardesk_stream_core.dll.
+file(GLOB FARDESK_FFMPEG_DLLS "${FARDESK_FFMPEG_ROOT}/bin/*.dll")
+foreach(_dll ${FARDESK_FFMPEG_DLLS})
+  add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${_dll}"
+      "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+  )
+endforeach()
 
 # Apply the standard set of build settings. This can be removed for applications
 # that need different build settings.

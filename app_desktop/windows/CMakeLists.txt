@@ -2,22 +2,27 @@
 cmake_minimum_required(VERSION 3.14)
 project(app_desktop LANGUAGES C CXX)
 
-include(FetchContent)
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Moonlight dependencies statically" FORCE)
-FetchContent_Declare(
-  moonlight_common_c
-  GIT_REPOSITORY https://github.com/moonlight-stream/moonlight-common-c.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(moonlight_common_c)
+# moonlight-common-c exige OpenSSL (find_package(OpenSSL REQUIRED)) por
+# padrão. A instalação vem do vcpkg em .tools/vcpkg-installed/x64-windows.
+set(FARDESK_VCPKG_INSTALLED "${CMAKE_CURRENT_SOURCE_DIR}/../../.tools/vcpkg-installed/x64-windows" CACHE PATH "Raiz do vcpkg-installed")
+get_filename_component(FARDESK_VCPKG_INSTALLED "${FARDESK_VCPKG_INSTALLED}" ABSOLUTE)
+list(APPEND CMAKE_PREFIX_PATH "${FARDESK_VCPKG_INSTALLED}")
+set(OPENSSL_ROOT_DIR "${FARDESK_VCPKG_INSTALLED}" CACHE PATH "Raiz do OpenSSL (vcpkg)")
+set(OPENSSL_USE_STATIC_LIBS TRUE CACHE BOOL "Usar OpenSSL estático do vcpkg")
+add_subdirectory("vendor")
+
+# Build pré-compilado do FFmpeg (BtbN, shared, win64, com D3D11VA/DXVA2/Opus já
+# habilitados) usado para decodificação de vídeo/áudio no core nativo. Fica em
+# .tools/ffmpeg na raiz do repositório, fora do versionamento.
+set(FARDESK_FFMPEG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../.tools/ffmpeg" CACHE PATH "Raiz do FFmpeg pré-compilado")
+get_filename_component(FARDESK_FFMPEG_ROOT "${FARDESK_FFMPEG_ROOT}" ABSOLUTE)
 
 add_subdirectory("native/fardesk_stream_core")
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "app_desktop")
+set(BINARY_NAME "FarDesk")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -117,6 +122,11 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 
 install(TARGETS fardesk_stream_core
   RUNTIME DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+
+file(GLOB FARDESK_FFMPEG_DLLS "${FARDESK_FFMPEG_ROOT}/bin/*.dll")
+install(FILES ${FARDESK_FFMPEG_DLLS}
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
 # Install the AOT library on non-Debug builds only.

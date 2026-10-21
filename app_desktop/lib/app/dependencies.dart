@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import '../core/host_agent/pairing_api_client.dart';
 import '../core/moonlight/moonlight_client.dart';
 import '../core/moonlight/windows_moonlight_client.dart';
+import '../core/network/bundled_tailscale_tun_runtime.dart';
+import '../core/network/tailscale_network_api.dart';
+import '../core/network/tailscale_network_manager.dart';
 import '../features/account/data/google_auth_repository.dart';
 import '../features/account/data/mock_auth_repository.dart';
 import '../features/account/domain/auth_repository.dart';
@@ -28,6 +33,7 @@ class AppDependencies {
     required this.settingsRepository,
     this.pairingApiClient,
     required this.moonlightClient,
+    required this.networkManager,
   });
 
   /// Tudo em memória, sem backend — pra desenvolver e testar a UI. Sem
@@ -39,6 +45,7 @@ class AppDependencies {
         integrationRepository: MockIntegrationRepository(),
         settingsRepository: InMemorySettingsRepository(),
         moonlightClient: WindowsMoonlightClient(),
+        networkManager: null,
       );
 
   /// Tudo contra o backend FarDesk de verdade. Configurações continuam só
@@ -55,6 +62,15 @@ class AppDependencies {
       settingsRepository: InMemorySettingsRepository(),
       pairingApiClient: PairingApiClient(backendBaseUrl: backendBaseUrl, accessToken: () => auth.activeAccessToken),
       moonlightClient: WindowsMoonlightClient(),
+      networkManager: FarDeskNetworkManager(
+        api: TailscaleNetworkApi(
+          backendBaseUrl: backendBaseUrl,
+          accessToken: () => auth.activeAccessToken,
+        ),
+        runtime: BundledTailscaleTunRuntime(
+          executableDirectory: Directory('${Platform.resolvedExecutable}\\..\\network'),
+        ),
+      ),
     );
   }
 
@@ -66,6 +82,7 @@ class AppDependencies {
   /// `null` em modo mock — ver `AppDependencies.mock()`.
   final PairingApiClient? pairingApiClient;
   final MoonlightClient moonlightClient;
+  final FarDeskNetworkManager? networkManager;
 
   List<SingleChildWidget> get providers => [
         Provider<AuthRepository>.value(value: authRepository),
@@ -74,6 +91,7 @@ class AppDependencies {
         Provider<SettingsRepository>.value(value: settingsRepository),
         Provider<PairingApiClient?>.value(value: pairingApiClient),
         Provider<MoonlightClient>.value(value: moonlightClient),
+        Provider<FarDeskNetworkManager?>.value(value: networkManager),
         ChangeNotifierProvider(create: (_) => SessionViewModel(authRepository)),
       ];
 }

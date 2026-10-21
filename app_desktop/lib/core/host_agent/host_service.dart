@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 /// Ciclo de vida do Sunshine como **serviço do Windows** — nunca como
 /// processo solto que o app segura aberto. É exatamente o padrão que
 /// Docker Desktop usa com o `dockerd`, ou o VS Code com language servers:
@@ -73,8 +75,14 @@ class HostService {
   /// Não precisa de UAC — `install()` já liberou start/stop pra qualquer
   /// usuário autenticado.
   Future<void> start() async {
-    if (await isRunning()) return;
+    if (await isRunning()) {
+      debugPrint('[HostService] start(): já estava rodando.');
+      return;
+    }
+    final startedAt = DateTime.now();
+    debugPrint('[HostService] start(): chamando "sc start $serviceName"...');
     await _run('sc', ['start', serviceName]);
+    debugPrint('[HostService] start(): "sc start" retornou em ${DateTime.now().difference(startedAt)}.');
   }
 
   Future<void> stop() async {
@@ -106,15 +114,35 @@ class HostService {
   /// enquanto o serviço ainda está de pé mas a API não respondeu.
   Future<void> waitUntilReady({
     required Future<bool> Function() onReady,
-    Duration timeout = const Duration(seconds: 20),
+    // Cold-start do Sunshine (sondar encoders disponíveis — inclusive os que
+    // falham, como av1_qsv nesta máquina — e compilar shaders) foi medido
+    // entre ~27s e bem mais que isso dependendo da máquina/carga; dando
+    // folga generosa pra não confundir "ainda inicializando" com "falhou".
+    Duration timeout = const Duration(seconds: 90),
     Duration pollInterval = const Duration(milliseconds: 500),
   }) async {
-    final deadline = DateTime.now().add(timeout);
+    final startedAt = DateTime.now();
+    final deadline = startedAt.add(timeout);
+    var attempt = 0;
     while (DateTime.now().isBefore(deadline)) {
-      if (await onReady()) return;
+      attempt++;
+      final ready = await onReady();
+      final elapsed = DateTime.now().difference(startedAt);
+      if (ready) {
+        debugPrint('[HostService] waitUntilReady(): pronto após $elapsed (tentativa $attempt).');
+        return;
+      }
+      // Loga só de vez em quando pra não encher o console a cada 500ms.
+      if (attempt % 6 == 0) {
+        debugPrint('[HostService] waitUntilReady(): ainda não pronto após $elapsed (tentativa $attempt)...');
+      }
       await Future<void>.delayed(pollInterval);
     }
-    throw HostServiceException('Sunshine não respondeu em $timeout.');
+    final totalElapsed = DateTime.now().difference(startedAt);
+    final stillRunning = await isRunning();
+    throw HostServiceException(
+      'Sunshine não respondeu em $totalElapsed (serviço ${stillRunning ? "ainda rodando" : "não está mais rodando"} — ver sunshine.log pra detalhes).',
+    );
   }
 
   /// `sc sdshow`/`sdset` são a forma documentada de mudar quem pode

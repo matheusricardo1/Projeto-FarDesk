@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:basic_utils/basic_utils.dart';
 import 'package:convert/convert.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:xml/xml.dart';
 
 import 'models/sunshine_pair_result.dart';
@@ -45,7 +46,7 @@ class SunshinePairingClient {
   Uri _httpsUri(String path, Map<String, String> query) =>
       Uri.https('$host:$httpsPort', path, query);
 
-  Future<SunshinePairResult> pair({required String pin}) async {
+  Future<SunshinePairOutcome> pair({required String pin}) async {
     final salt = SunshineCrypto.randomBytes(16);
     final aesKey = SunshineCrypto.deriveAesKey(salt, pin);
 
@@ -63,18 +64,20 @@ class SunshinePairingClient {
       }),
       timeout: const Duration(minutes: 2),
     );
-    if (_field(getCertXml, 'paired') != '1') return SunshinePairResult.failed;
+    if (_field(getCertXml, 'paired') != '1') return const SunshinePairOutcome(SunshinePairResult.failed);
 
     final serverCertPem = _certificatePemFromHex(_field(getCertXml, 'plaincert'));
     if (serverCertPem == null) {
       // Tentar parear enquanto outro pareamento está pendente faz o
       // Sunshine devolver um certificado vazio.
-      return SunshinePairResult.alreadyInProgress;
+      return const SunshinePairOutcome(SunshinePairResult.alreadyInProgress);
     }
     final serverCertData = X509Utils.x509CertificateFromPem(serverCertPem);
     final serverPublicKey = _rsaPublicKeyFromCertificate(serverCertData);
     final serverCertDer = serverCertificateDer(serverCertPem);
-    final serverCertSignature = Uint8List.fromList(serverCertData.signature!.codeUnits);
+    // `signature` vem como string hexadecimal (convenção do basic_utils pra
+    // campos binários de certificado) — NÃO latin1/codeUnits.
+    final serverCertSignature = certificateSignatureFromHex(serverCertData.signature!);
 
     // Passo 2 — desafio do cliente.
     final randomChallenge = SunshineCrypto.randomBytes(16);
@@ -87,7 +90,7 @@ class SunshinePairingClient {
     }));
     if (_field(challengeXml, 'paired') != '1') {
       await _unpair();
-      return SunshinePairResult.failed;
+      return const SunshinePairOutcome(SunshinePairResult.failed);
     }
 
     final decryptedChallengeResponse = SunshineCrypto.aesEcbDecrypt(
@@ -99,9 +102,22 @@ class SunshinePairingClient {
     final serverChallenge = decryptedChallengeResponse.sublist(hashLength, hashLength + 16);
 
     // Passo 3 — responde ao desafio do servidor e manda o nosso.
+    //
+    // IMPORTANTE: este hash usa a assinatura do NOSSO certificado (cliente),
+    // não a do servidor — confirmado contra a referência oficial
+    // (PairingManager.java do moonlight-android: `cert.getSignature()`, onde
+    // `cert` é `cryptoProvider.getClientCertificate()`). Só o hash de
+    // verificação da resposta do servidor, mais abaixo, usa a assinatura do
+    // certificado do SERVIDOR. Usar `serverCertSignature` aqui também (como
+    // estava antes) faz o pareamento falhar sempre com SunshinePairResult.pinWrong,
+    // mesmo com PIN/salt corretos.
     final clientSecret = SunshineCrypto.randomBytes(16);
     final challengeRespHash = SunshineCrypto.sha256(
-      SunshineCrypto.concat([serverChallenge, serverCertSignature, clientSecret]),
+      SunshineCrypto.concat([
+        serverChallenge,
+        identity.certificateSignatureBytes,
+        clientSecret,
+      ]),
     );
     final secretXml = await _get(_httpUri('/pair', {
       'uniqueid': identity.uniqueId,
@@ -111,7 +127,7 @@ class SunshinePairingClient {
     }));
     if (_field(secretXml, 'paired') != '1') {
       await _unpair();
-      return SunshinePairResult.failed;
+      return const SunshinePairOutcome(SunshinePairResult.failed);
     }
 
     final serverSecretResp = Uint8List.fromList(hex.decode(_field(secretXml, 'pairingsecret')));
@@ -120,15 +136,16 @@ class SunshinePairingClient {
 
     if (!CryptoUtils.rsaVerify(serverPublicKey, serverSecret, serverSignature)) {
       await _unpair();
-      return SunshinePairResult.failed; // Assinatura não bate — cheiro de man-in-the-middle.
+      return const SunshinePairOutcome(SunshinePairResult.failed); // Assinatura não bate — cheiro de man-in-the-middle.
     }
 
     final expectedServerResponse = SunshineCrypto.sha256(
       SunshineCrypto.concat([randomChallenge, serverCertSignature, serverSecret]),
     );
     if (!SunshineCrypto.bytesEqual(expectedServerResponse, serverResponse)) {
+      debugPrint('[SunshinePairingClient] hash da resposta do servidor não bateu — PIN errado do lado do host.');
       await _unpair();
-      return SunshinePairResult.pinWrong;
+      return const SunshinePairOutcome(SunshinePairResult.pinWrong);
     }
 
     // Passo 4 — prova pro servidor que sabemos o PIN, assinando com nossa chave privada.
@@ -144,7 +161,7 @@ class SunshinePairingClient {
     }));
     if (_field(clientSecretXml, 'paired') != '1') {
       await _unpair();
-      return SunshinePairResult.failed;
+      return const SunshinePairOutcome(SunshinePairResult.failed);
     }
 
     // Passo 5 — o desafio final só fecha via HTTPS com o certificado já em uso (mTLS).
@@ -161,13 +178,13 @@ class SunshinePairingClient {
       );
       if (_field(pairChallengeXml, 'paired') != '1') {
         await _unpair();
-        return SunshinePairResult.failed;
+        return const SunshinePairOutcome(SunshinePairResult.failed);
       }
     } finally {
       client.close(force: true);
     }
 
-    return SunshinePairResult.paired;
+    return SunshinePairOutcome(SunshinePairResult.paired, serverCertDer: serverCertDer);
   }
 
   Future<void> _unpair() async {
@@ -177,6 +194,15 @@ class SunshinePairingClient {
       // Best-effort — se o unpair falhar, a sessão pendente expira sozinha no host.
     }
   }
+
+  /// Limpa qualquer pareamento pendente ou já pareado ligado a este
+  /// `uniqueId` antes de começar um novo. Sem isso, uma tentativa anterior
+  /// que deixou uma sessão de pareamento pendente travada no host (ex: um
+  /// crash no meio do handshake, antes de chegar na branch que chama
+  /// `_unpair()`) faz a PRÓXIMA tentativa de pareamento falhar com
+  /// `pinWrong` — porque o lado admin (`listPendingPairings`) acha a entrada
+  /// ANTIGA (com o PIN de uma tentativa anterior) em vez da nova.
+  Future<void> cancelAnyPendingPairing() => _unpair();
 
   Future<String> _get(Uri uri, {Duration timeout = const Duration(seconds: 15)}) async {
     final client = HttpClient();
@@ -236,9 +262,12 @@ class SunshinePairingClient {
   }
 
   /// `subjectPublicKeyInfo.bytes` é o DER completo (algoritmo + bit string)
-  /// — exatamente o formato que `rsaPublicKeyFromDERBytes` espera.
+  /// — exatamente o formato que `rsaPublicKeyFromDERBytes` espera — mas vem
+  /// como string hexadecimal (convenção do basic_utils), não latin1/codeUnits.
+  /// Usar `.codeUnits` direto fazia o DER virar lixo e o parser de ASN1 do
+  /// pointycastle quebrar em qualquer tag que não reconhecesse.
   RSAPublicKey _rsaPublicKeyFromCertificate(X509CertificateData certificate) {
     final infoBytes = certificate.tbsCertificate!.subjectPublicKeyInfo.bytes!;
-    return CryptoUtils.rsaPublicKeyFromDERBytes(Uint8List.fromList(infoBytes.codeUnits));
+    return CryptoUtils.rsaPublicKeyFromDERBytes(Uint8List.fromList(hex.decode(infoBytes)));
   }
 }

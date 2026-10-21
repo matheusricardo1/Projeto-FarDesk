@@ -33,9 +33,23 @@ class MoonlightConnectionConfig {
   final int bitrateKbps;
 }
 
+/// Um frame de vídeo já decodificado, em BGRA (4 bytes por pixel), pronto
+/// para ser exibido. `bgra.length` é sempre `width * height * 4`.
+class MoonlightVideoFrame {
+  const MoonlightVideoFrame({required this.width, required this.height, required this.bgra});
+
+  final int width;
+  final int height;
+  final Uint8List bgra;
+}
+
 abstract interface class MoonlightClient {
   ValueListenable<MoonlightConnectionState> get state;
   ValueListenable<Object?> get error;
+
+  /// Último frame de vídeo decodificado pelo core nativo, ou `null` antes do
+  /// primeiro frame chegar. Atualizado continuamente enquanto conectado.
+  ValueListenable<MoonlightVideoFrame?> get latestVideoFrame;
 
   Future<void> connect(MoonlightConnectionConfig config);
 

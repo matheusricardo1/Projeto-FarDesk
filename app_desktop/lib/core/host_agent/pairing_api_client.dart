@@ -16,14 +16,43 @@ import 'models/pairing_request_summary.dart';
 /// (o `HostAgentPairingService` chama ele a cada poll), e o token pode
 /// mudar nesse meio tempo.
 class PairingApiClient {
-  PairingApiClient({required this.backendBaseUrl, required this.accessToken, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+  PairingApiClient({
+    required this.backendBaseUrl,
+    required this.accessToken,
+    http.Client? httpClient,
+  }) : _http = httpClient ?? http.Client();
 
   final String backendBaseUrl;
   final AccessTokenProvider accessToken;
   final http.Client _http;
 
-  Map<String, String> get _headers => {'Authorization': 'Bearer ${accessToken() ?? ''}'};
+  Map<String, String> get _headers {
+    final token = accessToken();
+    if (token == null || token.isEmpty) {
+      throw const PairingApiException('Nenhuma conta logada.');
+    }
+    return {'Authorization': 'Bearer $token'};
+  }
+
+  /// `null` quando não há nenhum pareamento esperando esse dispositivo agora.
+  Future<PairingRequestSummary> createPairingRequest(
+    String deviceId,
+    String pin,
+  ) async {
+    final response = await _http.post(
+      Uri.parse('$backendBaseUrl/devices/$deviceId/pairing-requests'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({'pin': pin}),
+    );
+    if (response.statusCode != 201) {
+      throw PairingApiException(
+        'Falha ao criar pedido de pareamento (HTTP ${response.statusCode}).',
+      );
+    }
+    return PairingRequestSummary.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
 
   /// `null` quando não há nenhum pareamento esperando esse dispositivo agora.
   Future<PairingRequestSummary?> fetchPending(String deviceId) async {
@@ -32,7 +61,9 @@ class PairingApiClient {
       headers: _headers,
     );
     if (response.statusCode != 200) {
-      throw PairingApiException('Falha ao consultar pareamento pendente (HTTP ${response.statusCode}).');
+      throw PairingApiException(
+        'Falha ao consultar pareamento pendente (HTTP ${response.statusCode}).',
+      );
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -42,22 +73,30 @@ class PairingApiClient {
 
   Future<void> ack(String deviceId, String requestId) async {
     final response = await _http.post(
-      Uri.parse('$backendBaseUrl/devices/$deviceId/pairing-requests/$requestId/ack'),
+      Uri.parse(
+        '$backendBaseUrl/devices/$deviceId/pairing-requests/$requestId/ack',
+      ),
       headers: _headers,
     );
     if (response.statusCode != 200) {
-      throw PairingApiException('Falha ao confirmar entrega do PIN (HTTP ${response.statusCode}).');
+      throw PairingApiException(
+        'Falha ao confirmar entrega do PIN (HTTP ${response.statusCode}).',
+      );
     }
   }
 
   Future<void> fail(String deviceId, String requestId, String reason) async {
     final response = await _http.post(
-      Uri.parse('$backendBaseUrl/devices/$deviceId/pairing-requests/$requestId/fail'),
+      Uri.parse(
+        '$backendBaseUrl/devices/$deviceId/pairing-requests/$requestId/fail',
+      ),
       headers: {..._headers, 'Content-Type': 'application/json'},
       body: jsonEncode({'reason': reason}),
     );
     if (response.statusCode != 200) {
-      throw PairingApiException('Falha ao registrar falha de pareamento (HTTP ${response.statusCode}).');
+      throw PairingApiException(
+        'Falha ao registrar falha de pareamento (HTTP ${response.statusCode}).',
+      );
     }
   }
 
@@ -68,21 +107,34 @@ class PairingApiClient {
     );
     if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {
-      throw PairingApiException('Falha ao consultar credencial do host (HTTP ${response.statusCode}).');
+      throw PairingApiException(
+        'Falha ao consultar credencial do host (HTTP ${response.statusCode}).',
+      );
     }
     final body = jsonDecode(response.body) as Map<String, dynamic>?;
     if (body == null) return null;
-    return HostCredentials(username: body['username'] as String, password: body['password'] as String);
+    return HostCredentials(
+      username: body['username'] as String,
+      password: body['password'] as String,
+    );
   }
 
-  Future<void> saveHostCredentials(String deviceId, HostCredentials credentials) async {
+  Future<void> saveHostCredentials(
+    String deviceId,
+    HostCredentials credentials,
+  ) async {
     final response = await _http.put(
       Uri.parse('$backendBaseUrl/devices/$deviceId/host-credentials'),
       headers: {..._headers, 'Content-Type': 'application/json'},
-      body: jsonEncode({'username': credentials.username, 'password': credentials.password}),
+      body: jsonEncode({
+        'username': credentials.username,
+        'password': credentials.password,
+      }),
     );
     if (response.statusCode != 204) {
-      throw PairingApiException('Falha ao salvar credencial do host (HTTP ${response.statusCode}).');
+      throw PairingApiException(
+        'Falha ao salvar credencial do host (HTTP ${response.statusCode}).',
+      );
     }
   }
 }

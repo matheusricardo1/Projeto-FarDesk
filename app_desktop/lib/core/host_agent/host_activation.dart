@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path_provider/path_provider.dart';
 
 import 'host_api.dart';
@@ -74,6 +75,7 @@ class HostActivation {
     final service = HostService(installDirectory: installDirectory);
 
     if (!await service.isInstalled()) {
+      debugPrint('[HostActivation] ensureRunning(): serviço não instalado, instalando agora...');
       await service.install();
     }
 
@@ -85,7 +87,9 @@ class HostActivation {
       ),
     );
 
-    if (!await service.isRunning()) {
+    final alreadyRunning = await service.isRunning();
+    debugPrint('[HostActivation] ensureRunning(): serviço já rodando? $alreadyRunning');
+    if (!alreadyRunning) {
       await (await _sessionMarker()).writeAsString(
         DateTime.now().toUtc().toIso8601String(),
       );
@@ -96,10 +100,12 @@ class HostActivation {
       await service.waitUntilReady(onReady: api.isReachable);
 
       if (_credentialsStore.generatedThisRun) {
+        debugPrint('[HostActivation] ensureRunning(): bootstrapando credencial admin pela primeira vez...');
         await api.bootstrapCredentials();
       }
     }
 
+    debugPrint('[HostActivation] ensureRunning(): pronto, devolvendo HostApi.');
     return api;
   }
 

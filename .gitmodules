@@ -1,0 +1,6 @@
+[submodule "native/libtailscale"]
+	path = native/libtailscale
+	url = https://github.com/tailscale/libtailscale.git
+[submodule "native/tailscale"]
+	path = native/tailscale
+	url = https://github.com/tailscale/tailscale.git

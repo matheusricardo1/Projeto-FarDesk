@@ -67,6 +67,7 @@ export class TailscaleApiGateway implements TailscaleGateway {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiAccessToken}` },
         body: JSON.stringify({
+          expiryDuration: options.expiryDuration,
           capabilities: {
             devices: {
               create: { reusable: options.reusable, ephemeral: options.ephemeral, tags: options.tags ?? [] },
