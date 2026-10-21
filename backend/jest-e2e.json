@@ -3,7 +3,6 @@
   "extensionsToTreatAsEsm": [".ts"],
   "moduleFileExtensions": ["js", "json", "ts"],
   "moduleNameMapper": {
-    "^@nestjs/throttler$": "<rootDir>/support/nestjs-throttler.mock.ts",
     "^@app\\.module$": "<rootDir>/../../app.module.ts",
     "^@(shared|modules|tests)/(.*)$": "<rootDir>/../../$1/$2",
     "^(\\.{1,2}/.*)\\.js$": "$1"
