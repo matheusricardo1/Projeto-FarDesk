@@ -45,5 +45,17 @@ class MockAuthRepository implements AuthRepository {
     return Ok(_snapshot());
   }
 
+  @override
+  Future<Result<AccountSession?>> signOut(String accountId) async {
+    await Future<void>.delayed(latency ~/ 2);
+    _accounts.removeWhere((a) => a.id == accountId);
+    if (_accounts.isEmpty) {
+      _activeId = null;
+      return const Ok(null);
+    }
+    if (_activeId == accountId) _activeId = _accounts.first.id;
+    return Ok(_snapshot());
+  }
+
   AccountSession _snapshot() => AccountSession(accounts: List.unmodifiable(_accounts), activeAccountId: _activeId!);
 }

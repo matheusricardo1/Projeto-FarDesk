@@ -208,6 +208,21 @@ class GoogleAuthRepository implements AuthRepository {
     );
   }
 
+  @override
+  Future<Result<AccountSession?>> signOut(String accountId) async {
+    _sessions.removeWhere((s) => s.account.id == accountId);
+    if (_sessions.isEmpty) {
+      _activeAccountId = null;
+      await _storage.delete(key: _sessionStorageKey);
+      return const Ok(null);
+    }
+    if (_activeAccountId == accountId) {
+      _activeAccountId = _sessions.first.account.id;
+    }
+    await _persistSession();
+    return Ok(_snapshot());
+  }
+
   _AccountSession? _findActive() {
     for (final session in _sessions) {
       if (session.account.id == _activeAccountId) return session;

@@ -17,6 +17,7 @@ class SessionViewModel extends ChangeNotifier {
   AuthProvider? _pendingSignIn;
   bool _addingAccount = false;
   String? _pendingSwitchId;
+  bool _signingOut = false;
   Object? _error;
 
   Future<void> _restoreSession() async {
@@ -38,6 +39,7 @@ class SessionViewModel extends ChangeNotifier {
   AuthProvider? get pendingSignIn => _pendingSignIn;
   bool get isAddingAccount => _addingAccount;
   String? get pendingSwitchId => _pendingSwitchId;
+  bool get isSigningOut => _signingOut;
   Object? get error => _error;
 
   Future<void> signIn(AuthProvider provider) async {
@@ -70,6 +72,26 @@ class SessionViewModel extends ChangeNotifier {
 
     _apply(await _repository.switchAccount(accountId));
     _pendingSwitchId = null;
+    notifyListeners();
+  }
+
+  /// Desconecta a conta ativa. Com mais contas logadas neste dispositivo,
+  /// outra assume sozinha; sendo a única, `isSignedIn` volta a `false` e o
+  /// app mostra a tela de login de novo.
+  Future<void> signOut() async {
+    final activeId = _session?.activeAccountId;
+    if (activeId == null || _signingOut) return;
+    _signingOut = true;
+    _error = null;
+    notifyListeners();
+
+    switch (await _repository.signOut(activeId)) {
+      case Ok(:final value):
+        _session = value;
+      case Failure(:final error):
+        _error = error;
+    }
+    _signingOut = false;
     notifyListeners();
   }
 

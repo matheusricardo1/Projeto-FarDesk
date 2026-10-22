@@ -13,4 +13,10 @@ abstract interface class AuthRepository {
   Future<Result<AccountSession>> addAccount(AuthProvider provider);
 
   Future<Result<AccountSession>> switchAccount(String accountId);
+
+  /// Desconecta uma conta deste dispositivo — apaga a sessão salva
+  /// localmente, não afeta a conta Google em si. Se era a conta ativa, outra
+  /// conta já logada assume sozinha; sem nenhuma sobrando, devolve `null` e
+  /// o app volta pra tela de login.
+  Future<Result<AccountSession?>> signOut(String accountId);
 }

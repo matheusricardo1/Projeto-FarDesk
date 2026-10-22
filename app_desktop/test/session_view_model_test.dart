@@ -54,6 +54,32 @@ void main() {
 
     expect(session.activeAccount?.id, other.id);
   });
+
+  test('sair com outra conta logada passa a usar ela, sem deslogar de tudo', () async {
+    await session.signIn(AuthProvider.google);
+    final leaving = session.activeAccount!;
+    final remaining = session.accounts.firstWhere((a) => a.id != leaving.id);
+
+    await session.signOut();
+
+    expect(session.isSignedIn, isTrue);
+    expect(session.accounts.any((a) => a.id == leaving.id), isFalse);
+    expect(session.activeAccount?.id, remaining.id);
+    expect(session.isSigningOut, isFalse);
+  });
+
+  test('sair da última conta volta pra tela de login', () async {
+    await session.signIn(AuthProvider.google);
+    expect(session.accounts.length, 2);
+
+    await session.signOut();
+    expect(session.isSignedIn, isTrue, reason: 'ainda sobrou uma conta');
+
+    await session.signOut();
+
+    expect(session.isSignedIn, isFalse);
+    expect(session.activeAccount, isNull);
+  });
 }
 
 class _RestoringAuthRepository extends MockAuthRepository {

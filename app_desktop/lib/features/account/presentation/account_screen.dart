@@ -25,7 +25,12 @@ class AccountScreen extends StatelessWidget {
         children: [
           const PageHeader(title: 'Conta', subtitle: 'Gerencie quem está conectado ao FarDesk neste dispositivo.'),
           SizedBox(height: rem(Space.xxl + 4)),
-          _ActiveAccountCard(account: active, colors: avatarGradientAt(session.activeIndex)),
+          _ActiveAccountCard(
+            account: active,
+            colors: avatarGradientAt(session.activeIndex),
+            signingOut: session.isSigningOut,
+            onSignOut: session.signOut,
+          ),
           SizedBox(height: rem(Space.xxxl)),
           const SectionLabel('Contas neste dispositivo'),
           SizedBox(height: rem(Space.md)),
@@ -53,10 +58,17 @@ class AccountScreen extends StatelessWidget {
 }
 
 class _ActiveAccountCard extends StatelessWidget {
-  const _ActiveAccountCard({required this.account, required this.colors});
+  const _ActiveAccountCard({
+    required this.account,
+    required this.colors,
+    required this.signingOut,
+    required this.onSignOut,
+  });
 
   final Account account;
   final List<Color> colors;
+  final bool signingOut;
+  final Future<void> Function() onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +98,16 @@ class _ActiveAccountCard extends StatelessWidget {
               ],
             ),
           ),
+          SizedBox(width: rem(Space.sm + 2)),
           AppButton(label: 'Editar perfil', variant: AppButtonVariant.secondary, onPressed: () {}),
+          SizedBox(width: rem(Space.sm + 2)),
+          AppButton(
+            label: 'Sair',
+            icon: Icons.logout_rounded,
+            variant: AppButtonVariant.danger,
+            loading: signingOut,
+            onPressed: signingOut ? null : onSignOut,
+          ),
         ],
       ),
     );
