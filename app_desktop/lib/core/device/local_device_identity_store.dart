@@ -13,22 +13,34 @@ import '../../features/devices/domain/device.dart';
 /// ele que o app sabe, na lista que `GET /devices` devolve, qual
 /// dispositivo é "este aqui" — o backend nunca decide isso.
 class LocalDeviceIdentity {
-  const LocalDeviceIdentity({required this.deviceId, required this.name, required this.platform});
+  const LocalDeviceIdentity({
+    required this.deviceId,
+    required this.name,
+    required this.platform,
+  });
 
   final String deviceId;
   final String name;
   final DevicePlatform platform;
 
-  Map<String, dynamic> _toJson() => {'deviceId': deviceId, 'name': name, 'platform': platform.name};
+  Map<String, dynamic> _toJson() => {
+    'deviceId': deviceId,
+    'name': name,
+    'platform': platform.name,
+  };
 
-  static LocalDeviceIdentity _fromJson(Map<String, dynamic> json) => LocalDeviceIdentity(
+  static LocalDeviceIdentity _fromJson(Map<String, dynamic> json) =>
+      LocalDeviceIdentity(
         deviceId: json['deviceId'] as String,
         name: json['name'] as String,
         platform: DevicePlatform.values.byName(json['platform'] as String),
       );
 
-  factory LocalDeviceIdentity._generate() =>
-      LocalDeviceIdentity(deviceId: const Uuid().v4(), name: _defaultName(), platform: _currentPlatform());
+  factory LocalDeviceIdentity._generate() => LocalDeviceIdentity(
+    deviceId: const Uuid().v4(),
+    name: _defaultName(),
+    platform: _currentPlatform(),
+  );
 
   static String _defaultName() {
     try {
@@ -48,7 +60,8 @@ class LocalDeviceIdentity {
 }
 
 class LocalDeviceIdentityStore {
-  LocalDeviceIdentityStore({Directory? directory}) : _directoryOverride = directory;
+  LocalDeviceIdentityStore({Directory? directory})
+    : _directoryOverride = directory;
 
   final Directory? _directoryOverride;
   LocalDeviceIdentity? _cached;
@@ -59,7 +72,8 @@ class LocalDeviceIdentityStore {
 
     final file = await _identityFile();
     if (await file.exists()) {
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final json =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return _cached = LocalDeviceIdentity._fromJson(json);
     }
 
@@ -69,8 +83,26 @@ class LocalDeviceIdentityStore {
     return _cached = identity;
   }
 
+  /// O backend devolveu um `deviceId` diferente do que tínhamos localmente
+  /// (ex.: esta mesma máquina já tinha um device registrado sob outro id,
+  /// de uma instalação anterior) — adota o id canônico do backend para não
+  /// duplicar o device dali em diante.
+  Future<void> adoptDeviceId(String deviceId) async {
+    final identity = await load();
+    if (identity.deviceId == deviceId) return;
+    final adopted = LocalDeviceIdentity(
+      deviceId: deviceId,
+      name: identity.name,
+      platform: identity.platform,
+    );
+    final file = await _identityFile();
+    await file.writeAsString(jsonEncode(adopted._toJson()));
+    _cached = adopted;
+  }
+
   Future<File> _identityFile() async {
-    final directory = _directoryOverride ?? await getApplicationSupportDirectory();
+    final directory =
+        _directoryOverride ?? await getApplicationSupportDirectory();
     return File('${directory.path}/local_device_identity.json');
   }
 }

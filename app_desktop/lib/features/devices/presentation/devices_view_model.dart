@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/result.dart';
@@ -15,6 +17,20 @@ class DevicesViewModel extends ChangeNotifier {
   Object? _loadError;
   Object? _actionError;
   final Set<String> _pending = {};
+  Timer? _heartbeatTimer;
+
+  void startHeartbeat() {
+    _heartbeatTimer ??= Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => unawaited(_repository.heartbeatThisDevice()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    super.dispose();
+  }
 
   bool get isLoading => _loading;
   bool get hasDevices => _devices.isNotEmpty;
@@ -42,6 +58,8 @@ class DevicesViewModel extends ChangeNotifier {
     // listar — só não vai aparecer um card marcado como "este dispositivo"
     // até o próximo `load()` bem-sucedido.
     await _repository.registerThisDevice();
+    await _repository.heartbeatThisDevice();
+    startHeartbeat();
 
     switch (await _repository.fetchDevices()) {
       case Ok(:final value):

@@ -32,7 +32,10 @@ class DeviceApiRepository implements DeviceRepository {
   Map<String, String> get _headers {
     final token = accessToken();
     if (token == null) throw ApiException('Nenhuma conta logada.');
-    return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
   }
 
   @override
@@ -49,6 +52,26 @@ class DeviceApiRepository implements DeviceRepository {
         }),
       );
       if (response.statusCode != 200) return Failure(_errorFor(response));
+      final registered = _deviceFromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+        currentDeviceId: identity.deviceId,
+      );
+      await _identityStore.adoptDeviceId(registered.id);
+      return const Ok(null);
+    } catch (error) {
+      return Failure(error);
+    }
+  }
+
+  @override
+  Future<Result<void>> heartbeatThisDevice() async {
+    try {
+      final identity = await _identityStore.load();
+      final response = await _http.post(
+        Uri.parse('$backendBaseUrl/devices/${identity.deviceId}/heartbeat'),
+        headers: _headers,
+      );
+      if (response.statusCode != 200) return Failure(_errorFor(response));
       return const Ok(null);
     } catch (error) {
       return Failure(error);
@@ -59,12 +82,20 @@ class DeviceApiRepository implements DeviceRepository {
   Future<Result<List<Device>>> fetchDevices() async {
     try {
       final identity = await _identityStore.load();
-      final response = await _http.get(Uri.parse('$backendBaseUrl/devices'), headers: _headers);
+      final response = await _http.get(
+        Uri.parse('$backendBaseUrl/devices'),
+        headers: _headers,
+      );
       if (response.statusCode != 200) return Failure(_errorFor(response));
       final list = jsonDecode(response.body) as List<dynamic>;
       return Ok(
         list
-            .map((json) => _deviceFromJson(json as Map<String, dynamic>, currentDeviceId: identity.deviceId))
+            .map(
+              (json) => _deviceFromJson(
+                json as Map<String, dynamic>,
+                currentDeviceId: identity.deviceId,
+              ),
+            )
             .toList(growable: false),
       );
     } catch (error) {
@@ -75,7 +106,10 @@ class DeviceApiRepository implements DeviceRepository {
   @override
   Future<Result<void>> connect(String deviceId) async {
     try {
-      final response = await _http.post(Uri.parse('$backendBaseUrl/devices/$deviceId/connect'), headers: _headers);
+      final response = await _http.post(
+        Uri.parse('$backendBaseUrl/devices/$deviceId/connect'),
+        headers: _headers,
+      );
       if (response.statusCode != 200) return Failure(_errorFor(response));
       return const Ok(null);
     } catch (error) {
@@ -86,28 +120,41 @@ class DeviceApiRepository implements DeviceRepository {
   @override
   Future<Result<Device>> wake(String deviceId) async {
     try {
-      final response = await _http.post(Uri.parse('$backendBaseUrl/devices/$deviceId/wake'), headers: _headers);
+      final response = await _http.post(
+        Uri.parse('$backendBaseUrl/devices/$deviceId/wake'),
+        headers: _headers,
+      );
       if (response.statusCode != 200) return Failure(_errorFor(response));
       final identity = await _identityStore.load();
-      return Ok(_deviceFromJson(jsonDecode(response.body) as Map<String, dynamic>, currentDeviceId: identity.deviceId));
+      return Ok(
+        _deviceFromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+          currentDeviceId: identity.deviceId,
+        ),
+      );
     } catch (error) {
       return Failure(error);
     }
   }
 
-  Device _deviceFromJson(Map<String, dynamic> json, {required String currentDeviceId}) => Device(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        platform: DevicePlatform.values.byName(json['platform'] as String),
-        status: DeviceStatus.values.byName(json['status'] as String),
-        isCurrentDevice: json['id'] == currentDeviceId,
-      );
+  Device _deviceFromJson(
+    Map<String, dynamic> json, {
+    required String currentDeviceId,
+  }) => Device(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    platform: DevicePlatform.values.byName(json['platform'] as String),
+    status: DeviceStatus.values.byName(json['status'] as String),
+    isCurrentDevice: json['id'] == currentDeviceId,
+  );
 
   ApiException _errorFor(http.Response response) {
     final body = _tryDecode(response.body);
     final message = body?['message'];
     return ApiException(
-      message is String ? message : 'Falha ao falar com o backend (HTTP ${response.statusCode}).',
+      message is String
+          ? message
+          : 'Falha ao falar com o backend (HTTP ${response.statusCode}).',
       statusCode: response.statusCode,
     );
   }

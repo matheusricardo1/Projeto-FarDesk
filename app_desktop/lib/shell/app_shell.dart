@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/design_system/design_system.dart';
 import '../core/host_agent/pairing_api_client.dart';
 import '../core/network/tailscale_network_manager.dart';
+import '../core/update/app_update_service.dart';
 import '../features/account/presentation/account_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/devices/presentation/devices_view_model.dart';
@@ -14,6 +15,7 @@ import '../features/integrations/presentation/integrations_screen.dart';
 import '../features/integrations/presentation/integrations_view_model.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/settings/presentation/settings_view_model.dart';
+import '../features/settings/presentation/update_view_model.dart';
 import 'side_rail.dart';
 
 /// Área logada. Os ViewModels das features vivem aqui (e não em cada tela)
@@ -66,6 +68,9 @@ class AppShellState extends State<AppShell> {
         ),
         ChangeNotifierProvider(
           create: (context) => SettingsViewModel(context.read())..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => UpdateViewModel(context.read<AppUpdateService>()),
         ),
       ],
       child: const _ShellLayout(),

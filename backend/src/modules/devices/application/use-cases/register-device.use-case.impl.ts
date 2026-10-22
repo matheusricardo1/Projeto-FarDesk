@@ -27,7 +27,20 @@ export class RegisterDeviceUseCaseImpl implements RegisterDeviceUseCase {
     const existing = await this.devices.findById(DeviceId.create(input.deviceId));
     if (existing) {
       if (existing.ownerId !== input.ownerId) return Result.err(new NotDeviceOwnerException(input.deviceId));
+      existing.recordHeartbeat(new Date());
+      await this.devices.save(existing);
       return Result.ok(DeviceMapper.toResponse(existing));
+    }
+
+    const sameMachine = (await this.devices.findAllByOwner(input.ownerId)).find(
+      (device) =>
+        device.platform === input.platform &&
+        device.name.trim().toLocaleLowerCase() === input.name.trim().toLocaleLowerCase(),
+    );
+    if (sameMachine) {
+      sameMachine.recordHeartbeat(new Date());
+      await this.devices.save(sameMachine);
+      return Result.ok(DeviceMapper.toResponse(sameMachine));
     }
 
     const device = Device.create({
@@ -36,6 +49,7 @@ export class RegisterDeviceUseCaseImpl implements RegisterDeviceUseCase {
       name: input.name,
       platform: input.platform,
     });
+    device.recordHeartbeat(new Date());
     await this.devices.save(device);
     return Result.ok(DeviceMapper.toResponse(device));
   }

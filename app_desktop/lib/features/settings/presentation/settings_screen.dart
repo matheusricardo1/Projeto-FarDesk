@@ -7,6 +7,7 @@ import '../domain/host_settings_schema.dart';
 import '../domain/setting.dart';
 import 'settings_block_view.dart';
 import 'settings_view_model.dart';
+import 'updates_view.dart';
 
 const _pageIcons = <String, IconData>{
   'client.basic': Icons.tune_rounded,
@@ -22,7 +23,12 @@ const _pageIcons = <String, IconData>{
   'host.network': Icons.lan_outlined,
   'host.configFiles': Icons.insert_drive_file_outlined,
   'host.advanced': Icons.settings_suggest_outlined,
+  'about.updates': Icons.system_update_alt_rounded,
 };
+
+/// Não vem do schema declarativo (precisa de progresso de download, botões
+/// de ação próprios) — tratada à parte em `_SettingsScreenState.build`.
+const _updatesPage = SettingsPage(id: 'about.updates', label: 'Atualizações', scope: SettingsScope.client, blocks: []);
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -53,33 +59,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _NavSection(title: 'Cliente', pages: clientSettingsPages, selected: _selected, onSelect: _select),
                 SizedBox(height: rem(Space.xl + 2)),
                 _NavSection(title: 'Host desta máquina', pages: hostSettingsPages, selected: _selected, onSelect: _select),
+                SizedBox(height: rem(Space.xl + 2)),
+                _NavSection(title: 'Sobre', pages: const [_updatesPage], selected: _selected, onSelect: _select),
               ],
             ),
           ),
         ),
         Expanded(
-          child: viewModel.isLoading
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
-              : SingleChildScrollView(
-                  key: PageStorageKey(_selected.id),
-                  padding: EdgeInsets.all(rem(Space.xxxl)),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: rem(720)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (viewModel.error != null) ...[
-                          const InlineNotice(text: 'Algumas configurações não puderam ser salvas.'),
-                          SizedBox(height: rem(Space.xxl)),
-                        ],
-                        for (final (index, block) in _selected.blocks.indexed) ...[
-                          if (index > 0) SizedBox(height: rem(Space.xxxl)),
-                          SettingsBlockView(scope: _selected.scope, block: block),
-                        ],
-                      ],
+          child: _selected.id == _updatesPage.id
+              ? const UpdatesView()
+              : viewModel.isLoading
+                  ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : SingleChildScrollView(
+                      key: PageStorageKey(_selected.id),
+                      padding: EdgeInsets.all(rem(Space.xxxl)),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: rem(720)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (viewModel.error != null) ...[
+                              const InlineNotice(text: 'Algumas configurações não puderam ser salvas.'),
+                              SizedBox(height: rem(Space.xxl)),
+                            ],
+                            for (final (index, block) in _selected.blocks.indexed) ...[
+                              if (index > 0) SizedBox(height: rem(Space.xxxl)),
+                              SettingsBlockView(scope: _selected.scope, block: block),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
         ),
       ],
     );

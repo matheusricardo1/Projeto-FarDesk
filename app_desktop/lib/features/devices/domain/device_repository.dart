@@ -12,6 +12,8 @@ abstract interface class DeviceRepository {
   /// login.
   Future<Result<void>> registerThisDevice();
 
+  Future<Result<void>> heartbeatThisDevice();
+
   /// Inicia a sessão de stream com o dispositivo.
   Future<Result<void>> connect(String deviceId);
 

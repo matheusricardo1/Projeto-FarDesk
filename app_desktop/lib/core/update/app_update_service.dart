@@ -85,16 +85,33 @@ class AppUpdateService {
     }
   }
 
-  Future<File> downloadInstaller(AppUpdateInfo update) async {
-    final response = await _client.get(Uri.parse(update.installerUrl));
+  /// [onProgress] recebe bytes recebidos e bytes totais a cada chunk — o
+  /// total vem `-1` quando o servidor não manda `Content-Length`.
+  Future<File> downloadInstaller(
+    AppUpdateInfo update, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final request = http.Request('GET', Uri.parse(update.installerUrl));
+    final response = await _client.send(request);
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException(
         'Não foi possível baixar a atualização (${response.statusCode}).',
       );
     }
+
     final directory = await Directory.systemTemp.createTemp('fardesk-update-');
     final installer = File('${directory.path}\\FarDesk-Setup.exe');
-    await installer.writeAsBytes(response.bodyBytes, flush: true);
+    final sink = installer.openWrite();
+    var received = 0;
+    try {
+      await response.stream.listen((chunk) {
+        received += chunk.length;
+        sink.add(chunk);
+        onProgress?.call(received, response.contentLength ?? -1);
+      }).asFuture<void>();
+    } finally {
+      await sink.close();
+    }
     return installer;
   }
 
