@@ -124,6 +124,7 @@ describe('Casos de uso de dispositivos', () => {
         status: DeviceStatus.Hibernating,
         lastHeartbeatAt: null,
         activeViewerCount: 0,
+        hostCredential: null,
       }),
     );
 
@@ -153,6 +154,56 @@ describe('Casos de uso de dispositivos', () => {
 
     expect(second.value.id).toBe('local-uuid-2');
     expect((await repository.findAllByOwner(OWNER)).filter((d) => d.id.value === 'local-uuid-2')).toHaveLength(1);
+  });
+
+  it('RegisterDevice reconhece a mesma máquina sob um deviceId local diferente em vez de duplicar', async () => {
+    const useCase = new RegisterDeviceUseCaseImpl(repository);
+    await useCase.execute({
+      ownerId: OWNER,
+      deviceId: 'instalacao-dev',
+      name: 'DESKTOP-MATHEUS',
+      platform: DevicePlatform.Windows,
+    });
+
+    const second = await useCase.execute({
+      ownerId: OWNER,
+      deviceId: 'instalacao-producao',
+      name: 'desktop-matheus',
+      platform: DevicePlatform.Windows,
+    });
+
+    expect(second.value.id).toBe('instalacao-dev');
+    expect(await repository.findAllByOwner(OWNER)).toHaveLength(1);
+  });
+
+  it('RegisterDevice não mistura máquinas diferentes só por terem a mesma plataforma', async () => {
+    const useCase = new RegisterDeviceUseCaseImpl(repository);
+    await useCase.execute({ ownerId: OWNER, deviceId: 'pc-1', name: 'PC da Sala', platform: DevicePlatform.Windows });
+
+    await useCase.execute({ ownerId: OWNER, deviceId: 'pc-2', name: 'Notebook', platform: DevicePlatform.Windows });
+
+    expect(await repository.findAllByOwner(OWNER)).toHaveLength(2);
+  });
+
+  it('StartSession recusa um "online" guardado cujo heartbeat já é velho demais', async () => {
+    const device = Device.reconstruct({
+      id: DeviceId.create('stale'),
+      ownerId: OWNER,
+      name: 'PC',
+      platform: DevicePlatform.Windows,
+      status: DeviceStatus.Online,
+      lastHeartbeatAt: new Date(Date.now() - 10 * 60 * 1000),
+      activeViewerCount: 0,
+      hostCredential: null,
+    });
+    repository.add(device);
+
+    const result = await new StartSessionUseCaseImpl(repository).execute({
+      deviceId: 'stale',
+      ownerId: OWNER,
+    });
+
+    expect(result.error).toBeInstanceOf(DeviceNotAvailableException);
   });
 
   it('RegisterDevice recusa um deviceId que já pertence a outra conta', async () => {

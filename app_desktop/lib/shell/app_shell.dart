@@ -87,6 +87,34 @@ class _ShellLayout extends StatefulWidget {
 
 class _ShellLayoutState extends State<_ShellLayout> {
   ShellDestination _destination = ShellDestination.devices;
+  late final HostActivationViewModel _hostActivation;
+  late final DevicesViewModel _devices;
+
+  @override
+  void initState() {
+    super.initState();
+    _hostActivation = context.read<HostActivationViewModel>();
+    _devices = context.read<DevicesViewModel>();
+    // Heartbeat é "este PC está disponível como host" — não "a tela de
+    // dispositivos está aberta". Liga/desliga seguindo o estado real do
+    // `HostActivationViewModel`, não o ciclo de vida da tela.
+    _syncHeartbeat();
+    _hostActivation.addListener(_syncHeartbeat);
+  }
+
+  void _syncHeartbeat() {
+    if (_hostActivation.status == HostActivationStatus.ready) {
+      _devices.startHeartbeat();
+    } else {
+      _devices.stopHeartbeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _hostActivation.removeListener(_syncHeartbeat);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -3,12 +3,12 @@ import type { DeviceResponseDto } from '@modules/devices/application/dtos/device
 import type { HeartbeatResponseDto } from '@modules/devices/application/dtos/heartbeat-response.dto';
 
 export class DeviceMapper {
-  static toResponse(device: Device): DeviceResponseDto {
+  static toResponse(device: Device, now: Date = new Date()): DeviceResponseDto {
     return {
       id: device.id.value,
       name: device.name,
       platform: device.platform,
-      status: device.status,
+      status: device.effectiveStatus(now),
       activeViewerCount: device.activeViewerCount,
       lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
     };

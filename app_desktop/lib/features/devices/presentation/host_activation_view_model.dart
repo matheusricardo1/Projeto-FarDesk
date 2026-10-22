@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/device/local_device_identity_store.dart';
 import '../../../core/host_agent/host_activation.dart';
 import '../../../core/host_agent/host_agent_pairing_service.dart';
+import '../../../core/host_agent/host_availability_store.dart';
 import '../../../core/host_agent/host_credentials_store.dart';
 import '../../../core/host_agent/pairing_api_client.dart';
 import '../../../core/host_agent/sunshine_admin_client.dart';
@@ -17,24 +18,29 @@ enum HostActivationStatus { notReady, preparing, ready, error }
 /// está de olho, pronto pra ligar o Sunshine sozinho na primeira vez que
 /// alguém tentar conectar.
 ///
-/// Dois jeitos de chegar em `ready`: a pessoa clica em "Usar este PC como
-/// host" (`prepare()`), ou — depois da primeira vez — o app descobre isso
-/// sozinho ao abrir, porque `HostActivation.isPrepared()` já confirma sem
-/// precisar de clique nenhum. Em ambos os casos, o vigia é ligado na hora.
+/// `useAsHost` (padrão `true`, persistido em disco — ver
+/// `HostAvailabilityStore`) é a configuração; `status` é o resultado dela.
+/// Com a configuração ligada — o caso normal, ninguém precisa clicar em
+/// nada — o app chama `prepare()` sozinho ao abrir. A pessoa só vê o botão
+/// "Usar este PC como host" se tiver desligado isso antes, ou se
+/// `prepare()` falhar e precisar de um retry manual.
 class HostActivationViewModel extends ChangeNotifier {
   HostActivationViewModel({
     HostActivation? hostActivation,
     this.pairingApiClient,
     LocalDeviceIdentityStore? identityStore,
-  }) : _identityStore = identityStore ?? LocalDeviceIdentityStore() {
+    HostAvailabilityStore? availabilityStore,
+  }) : _identityStore = identityStore ?? LocalDeviceIdentityStore(),
+       _availabilityStore = availabilityStore ?? HostAvailabilityStore() {
     _credentialsStore = HostCredentialsStore();
     _hostActivation =
         hostActivation ?? HostActivation(credentialsStore: _credentialsStore);
-    unawaited(_checkAlreadyPrepared());
+    unawaited(_initialize());
   }
 
   late final HostActivation _hostActivation;
   final LocalDeviceIdentityStore _identityStore;
+  final HostAvailabilityStore _availabilityStore;
   late final HostCredentialsStore _credentialsStore;
 
   /// `null` quando o app está em modo mock (sem backend de verdade) — o
@@ -47,24 +53,66 @@ class HostActivationViewModel extends ChangeNotifier {
   HostActivationStatus _status = HostActivationStatus.notReady;
   Object? _error;
 
+  /// Valor otimista até `HostAvailabilityStore.load()` resolver — a
+  /// configuração é ligada por padrão, então a UI já parte daí em vez de
+  /// esperar o disco pra decidir o que mostrar.
+  bool _useAsHost = true;
+
   HostActivationStatus get status => _status;
   Object? get error => _error;
   bool get isBusy => _status == HostActivationStatus.preparing;
+  bool get useAsHost => _useAsHost;
 
-  Future<void> _checkAlreadyPrepared() async {
+  Future<void> _initialize() async {
     try {
       await _hostActivation.reconcileOnStartup();
+      _useAsHost = await _availabilityStore.load();
+
+      // Desligado explicitamente numa sessão anterior — não reativa sozinho
+      // só porque o serviço do Windows continua instalado de antes
+      // (`shutdown()` para o Sunshine, mas não desinstala nada).
+      if (!_useAsHost) {
+        notifyListeners();
+        return;
+      }
+
       if (await _hostActivation.isPrepared()) {
         _status = HostActivationStatus.ready;
         notifyListeners();
         unawaited(_startWatcherIfNeeded());
+        return;
       }
+
+      await prepare();
     } catch (error) {
       _error = error;
       _status = HostActivationStatus.error;
       notifyListeners();
     }
+  }
 
+  /// Liga/desliga a configuração "usar este PC como host". Desligar
+  /// desarma o vigia e encerra o Sunshine se estiver rodando — religar
+  /// chama `prepare()` de novo, do zero se precisar.
+  Future<void> setUseAsHost(bool value) async {
+    _useAsHost = value;
+    await _availabilityStore.save(value);
+
+    if (value) {
+      if (_status != HostActivationStatus.ready) await prepare();
+      return;
+    }
+
+    if (_status == HostActivationStatus.notReady) {
+      notifyListeners();
+      return;
+    }
+    _watcher?.stop();
+    _watcher = null;
+    await _hostActivation.shutdown();
+    _status = HostActivationStatus.notReady;
+    _error = null;
+    notifyListeners();
   }
 
   Future<void> shutdown() async {

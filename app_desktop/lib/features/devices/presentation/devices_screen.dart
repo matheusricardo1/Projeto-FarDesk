@@ -193,10 +193,10 @@ class _DevicesBody extends StatelessWidget {
 
   Future<void> _toggleHost(HostActivationViewModel hostActivation) {
     return switch (hostActivation.status) {
-      HostActivationStatus.ready ||
       HostActivationStatus.preparing => Future<void>.value(),
+      HostActivationStatus.ready => hostActivation.setUseAsHost(false),
       HostActivationStatus.notReady ||
-      HostActivationStatus.error => hostActivation.prepare(),
+      HostActivationStatus.error => hostActivation.setUseAsHost(true),
     };
   }
 }

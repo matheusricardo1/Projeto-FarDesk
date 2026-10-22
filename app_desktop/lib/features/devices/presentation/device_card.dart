@@ -87,10 +87,11 @@ class DeviceCard extends StatelessWidget {
             expand: true,
             loading: true,
           ),
-        HostActivationStatus.ready => const AppButton(
-            label: 'Pronto — liga sozinho ao conectar',
-            variant: AppButtonVariant.muted,
+        HostActivationStatus.ready => AppButton(
+            label: 'Disponível como host — toque p/ desativar',
+            variant: AppButtonVariant.secondary,
             expand: true,
+            onPressed: onToggleHost,
           ),
         HostActivationStatus.error => AppButton(
             label: 'Falhou — tentar de novo',

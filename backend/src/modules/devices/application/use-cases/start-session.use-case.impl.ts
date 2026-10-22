@@ -24,6 +24,13 @@ export class StartSessionUseCaseImpl implements StartSessionUseCase {
     if (owned.isErr) return Result.err(owned.error);
 
     const device = owned.value;
+    // `device.status` guardado pode estar "Online" obsoleto (heartbeat
+    // parou, ninguém chamou markOffline ainda) — startSession() só olha o
+    // campo bruto, então checa aqui o status decaído antes de deixar
+    // passar.
+    if (device.effectiveStatus() !== device.status) {
+      return Result.err(new DeviceNotAvailableException(device.id.value, device.effectiveStatus()));
+    }
     try {
       device.startSession();
     } catch (error) {

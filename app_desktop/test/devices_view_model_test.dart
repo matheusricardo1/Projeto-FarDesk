@@ -29,6 +29,13 @@ void main() {
     expect(viewModel.visibleDevices, isEmpty);
   });
 
+  test('esconde dispositivos offline que não são este PC', () {
+    expect(
+      viewModel.visibleDevices.where((d) => d.status == DeviceStatus.offline),
+      isEmpty,
+    );
+  });
+
   test('acordar um dispositivo hibernando deixa ele online', () async {
     final hibernating = viewModel.visibleDevices.firstWhere((d) => d.canWake);
 

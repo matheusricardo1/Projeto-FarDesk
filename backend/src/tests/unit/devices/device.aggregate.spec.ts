@@ -86,4 +86,51 @@ describe('Device', () => {
       expect(device.nextHeartbeatIntervalSeconds()).toBe(2);
     });
   });
+
+  describe('effectiveStatus (decadência sem worker em background)', () => {
+    it('continua online pouco depois do heartbeat', () => {
+      const device = onlineDevice();
+      const soonAfter = new Date(Date.now() + 30_000);
+      expect(device.effectiveStatus(soonAfter)).toBe(DeviceStatus.Online);
+    });
+
+    it('vira offline na leitura depois de muito tempo sem heartbeat, sem reescrever o status guardado', () => {
+      const device = onlineDevice();
+      const muchLater = new Date(Date.now() + 10 * 60 * 1000);
+      expect(device.effectiveStatus(muchLater)).toBe(DeviceStatus.Offline);
+      expect(device.status).toBe(DeviceStatus.Online);
+    });
+
+    it('um "EmUso" obsoleto também decai pra offline', () => {
+      const device = onlineDevice();
+      device.startSession();
+      const muchLater = new Date(Date.now() + 10 * 60 * 1000);
+      expect(device.effectiveStatus(muchLater)).toBe(DeviceStatus.Offline);
+    });
+
+    it('nunca mexe num status que já não é online/em uso', () => {
+      const device = offlineDevice();
+      const muchLater = new Date(Date.now() + 10 * 60 * 1000);
+      expect(device.effectiveStatus(muchLater)).toBe(DeviceStatus.Offline);
+    });
+
+    it('sem heartbeat nenhum registrado, mesmo guardado como online, decai pra offline', () => {
+      const device = Device.reconstruct({
+        ...offlineDevice().toSnapshot(),
+        status: DeviceStatus.Online,
+        lastHeartbeatAt: null,
+      });
+      expect(device.effectiveStatus()).toBe(DeviceStatus.Offline);
+    });
+  });
+
+  describe('startSession recusa um device que ficou obsoleto', () => {
+    it('não deixa iniciar sessão num "online" guardado cujo heartbeat já é antigo demais', () => {
+      const stale = Device.reconstruct({
+        ...onlineDevice().toSnapshot(),
+        lastHeartbeatAt: new Date(Date.now() - 10 * 60 * 1000),
+      });
+      expect(stale.effectiveStatus()).toBe(DeviceStatus.Offline);
+    });
+  });
 });

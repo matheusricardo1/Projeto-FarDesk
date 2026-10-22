@@ -16,6 +16,14 @@ import { DeviceStatus } from '@modules/devices/domain/value-objects/device-statu
 const IDLE_HEARTBEAT_INTERVAL_SECONDS = 60;
 const ACTIVE_HEARTBEAT_INTERVAL_SECONDS = 2;
 
+/**
+ * Depois de quanto tempo sem heartbeat um device "Online"/"EmUso" é tratado
+ * como morto. Não existe worker em background que zere isso sozinho (o
+ * backend é serverless) — a decadência é calculada na leitura, em
+ * `effectiveStatus`, nunca escrita de volta.
+ */
+const STALE_AFTER_SECONDS = IDLE_HEARTBEAT_INTERVAL_SECONDS * 3;
+
 export interface DeviceProps {
   id: DeviceId;
   ownerId: string;
@@ -111,6 +119,22 @@ export class Device extends AggregateRoot<DeviceId> {
     if (this.props.status === DeviceStatus.Offline || this.props.status === DeviceStatus.Hibernating) {
       this.props.status = DeviceStatus.Online;
     }
+  }
+
+  /**
+   * Status "de verdade" pra expor pra fora: um "Online"/"EmUso" guardado há
+   * mais de `STALE_AFTER_SECONDS` sem heartbeat (app fechado, PC desligado,
+   * processo morto — ninguém chamou `markOffline()`) é tratado como Offline
+   * na leitura, sem precisar reescrever o registro. É isso que impede um
+   * device abandonado de ficar "Online" pra sempre.
+   */
+  effectiveStatus(now: Date = new Date()): DeviceStatus {
+    const isLive = this.props.status === DeviceStatus.Online || this.props.status === DeviceStatus.InUse;
+    if (!isLive) return this.props.status;
+    if (!this.props.lastHeartbeatAt) return DeviceStatus.Offline;
+
+    const elapsedMs = now.getTime() - this.props.lastHeartbeatAt.getTime();
+    return elapsedMs > STALE_AFTER_SECONDS * 1000 ? DeviceStatus.Offline : this.props.status;
   }
 
   markOffline(): void {
