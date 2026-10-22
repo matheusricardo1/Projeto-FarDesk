@@ -78,6 +78,11 @@ if ($null -eq $iscc) {
   $isccPath = $iscc.Source
 }
 
+& (Join-Path $PSScriptRoot "generate-installer-assets.ps1") -RepoRoot $repoRoot
+if ($LASTEXITCODE -ne 0) {
+  throw "A geração dos assets visuais do instalador falhou."
+}
+
 $installerDirectory = Join-Path $repoRoot "build\installer"
 New-Item -ItemType Directory -Force -Path $installerDirectory | Out-Null
 & $isccPath "/DAppVersion=$Version" "/DAppBuild=$BuildNumber" "/O$installerDirectory" (Join-Path $repoRoot "scripts\FarDesk.iss")
