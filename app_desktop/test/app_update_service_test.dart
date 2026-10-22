@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:app_desktop/core/update/app_update_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,4 +53,41 @@ void main() {
     expect(await service.checkForUpdate(), isNull);
     service.dispose();
   });
+
+  test('downloadInstaller rejects a truncated download and cleans up its temp dir', () async {
+    final client = MockClient.streaming((request, bodyStream) async {
+      // Anuncia 100 bytes mas só manda 10 — conexão caindo no meio.
+      return http.StreamedResponse(Stream.value(List.filled(10, 1)), 200, contentLength: 100);
+    });
+    final service = AppUpdateService(currentVersion: '1.0.2', client: client);
+    final update = const AppUpdateInfo(
+      version: '1.0.3',
+      releaseUrl: 'https://example.test/release',
+      installerUrl: 'https://example.test/FarDesk-Setup.exe',
+    );
+
+    final before = _staleUpdateDirs().length;
+    await expectLater(service.downloadInstaller(update), throwsA(isA<HttpException>()));
+    expect(_staleUpdateDirs().length, before, reason: 'não deve deixar pasta temporária pra trás');
+    service.dispose();
+  });
+
+  test('cleanupStaleDownloads apaga pastas fardesk-update-* e ignora o resto', () async {
+    final stale = await Directory.systemTemp.createTemp('fardesk-update-');
+    await File('${stale.path}\\FarDesk-Setup.exe').writeAsBytes([1, 2, 3]);
+    final unrelated = await Directory.systemTemp.createTemp('not-fardesk-');
+
+    await AppUpdateService.cleanupStaleDownloads();
+
+    expect(await stale.exists(), isFalse);
+    expect(await unrelated.exists(), isTrue);
+    await unrelated.delete(recursive: true);
+  });
 }
+
+List<String> _staleUpdateDirs() => Directory.systemTemp
+    .listSync()
+    .whereType<Directory>()
+    .map((d) => d.path)
+    .where((p) => p.contains('fardesk-update-'))
+    .toList();

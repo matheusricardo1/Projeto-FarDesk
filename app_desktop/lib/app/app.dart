@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -48,6 +49,10 @@ class _AppRootState extends State<_AppRoot> {
   @override
   void initState() {
     super.initState();
+    // Fire-and-forget: varre `%TEMP%` por pastas de downloads de atualização
+    // de uma sessão anterior (instalador que já terminou, ou tentativa que
+    // falhou antes de existir essa limpeza) — nunca bloqueia a abertura.
+    unawaited(AppUpdateService.cleanupStaleDownloads());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
   }
 

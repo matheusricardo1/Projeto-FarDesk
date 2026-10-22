@@ -91,6 +91,11 @@ class AppUpdateService {
     AppUpdateInfo update, {
     void Function(int received, int total)? onProgress,
   }) async {
+    // Começa limpando pastas de tentativas anteriores (uma que falhou antes
+    // de existir essa limpeza, ou uma de um instalador que já terminou de
+    // rodar) — nunca acumula uma por tentativa.
+    await cleanupStaleDownloads();
+
     final request = http.Request('GET', Uri.parse(update.installerUrl));
     final response = await _client.send(request);
     if (response.statusCode != HttpStatus.ok) {
@@ -124,6 +129,35 @@ class AppUpdateService {
       );
     }
     return installer;
+  }
+
+  /// Apaga pastas `fardesk-update-*` deixadas por downloads de versões
+  /// anteriores — de uma tentativa que falhou antes dessa limpeza existir,
+  /// ou do instalador de uma atualização que já rodou e terminou. Chamada
+  /// no início de cada download e uma vez ao abrir o app, pra nunca deixar
+  /// lixo acumulando no `%TEMP%` do usuário.
+  ///
+  /// Silenciosa de propósito: uma pasta ainda travada (o instalador que
+  /// acabou de ser lançado pode não ter liberado o arquivo ainda) só é
+  /// ignorada — a próxima chamada tenta de novo.
+  static Future<void> cleanupStaleDownloads() async {
+    List<FileSystemEntity> entries;
+    try {
+      entries = await Directory.systemTemp.list().toList();
+    } catch (_) {
+      return;
+    }
+    for (final entry in entries) {
+      if (entry is! Directory) continue;
+      final segments = entry.uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      final name = segments.isEmpty ? '' : segments.last;
+      if (!name.startsWith('fardesk-update-')) continue;
+      try {
+        await entry.delete(recursive: true);
+      } catch (_) {
+        // Ainda em uso ou sem permissão agora — sobra pra próxima limpeza.
+      }
+    }
   }
 
   void dispose() => _client.close();
