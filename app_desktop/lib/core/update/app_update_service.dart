@@ -99,6 +99,7 @@ class AppUpdateService {
       );
     }
 
+    final expectedBytes = response.contentLength ?? -1;
     final directory = await Directory.systemTemp.createTemp('fardesk-update-');
     final installer = File('${directory.path}\\FarDesk-Setup.exe');
     final sink = installer.openWrite();
@@ -107,10 +108,20 @@ class AppUpdateService {
       await response.stream.listen((chunk) {
         received += chunk.length;
         sink.add(chunk);
-        onProgress?.call(received, response.contentLength ?? -1);
+        onProgress?.call(received, expectedBytes);
       }).asFuture<void>();
     } finally {
       await sink.close();
+    }
+
+    // Download truncado (conexão caiu no meio) não deve virar um instalador
+    // corrompido rodando silenciosamente — falha explícito e deixa o usuário
+    // tentar de novo.
+    if (received == 0 || (expectedBytes >= 0 && received != expectedBytes)) {
+      await directory.delete(recursive: true);
+      throw HttpException(
+        'Download incompleto (recebido $received de $expectedBytes bytes). Tente novamente.',
+      );
     }
     return installer;
   }
