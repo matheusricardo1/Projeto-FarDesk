@@ -54,6 +54,7 @@ class SideRail extends StatelessWidget {
                 onTap: () => onSelect(ShellDestination.account),
                 builder: (context, hovering) => AppAvatar(
                   initial: account.initial,
+                  imageUrl: account.avatarUrl,
                   colors: avatarGradientAt(session.activeIndex),
                   selected: destination == ShellDestination.account,
                   glow: hovering,

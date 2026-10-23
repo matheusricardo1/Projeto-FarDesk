@@ -11,21 +11,17 @@ import '../core/network/tailscale_network_api.dart';
 import '../core/network/tailscale_network_manager.dart';
 import '../core/update/app_update_service.dart';
 import '../features/account/data/google_auth_repository.dart';
-import '../features/account/data/mock_auth_repository.dart';
 import '../features/account/domain/auth_repository.dart';
 import '../features/account/presentation/session_view_model.dart';
 import '../features/devices/data/device_api_repository.dart';
-import '../features/devices/data/mock_device_repository.dart';
 import '../features/devices/domain/device_repository.dart';
 import '../features/integrations/data/integration_api_repository.dart';
-import '../features/integrations/data/mock_integration_repository.dart';
 import '../features/integrations/domain/integration_repository.dart';
 import '../features/settings/data/in_memory_settings_repository.dart';
 import '../features/settings/domain/settings_repository.dart';
 
-/// Ponto único de composição: decide qual implementação de cada repositório
-/// o app usa. Trocar um mock pela implementação real é mudar uma linha aqui —
-/// nenhuma tela ou ViewModel precisa saber.
+/// Ponto único de composição: monta cada repositório contra o backend
+/// FarDesk de verdade — nenhuma tela ou ViewModel precisa saber como.
 class AppDependencies {
   const AppDependencies({
     required this.authRepository,
@@ -37,19 +33,6 @@ class AppDependencies {
     required this.networkManager,
     required this.updateService,
   });
-
-  /// Tudo em memória, sem backend — pra desenvolver e testar a UI. Sem
-  /// `pairingApiClient`: não existe backend de verdade pra vigiar, então o
-  /// `HostAgentPairingService` nunca é iniciado neste modo.
-  factory AppDependencies.mock() => AppDependencies(
-    authRepository: MockAuthRepository(),
-    deviceRepository: MockDeviceRepository(),
-    integrationRepository: MockIntegrationRepository(),
-    settingsRepository: InMemorySettingsRepository(),
-    moonlightClient: WindowsMoonlightClient(),
-    networkManager: null,
-    updateService: AppUpdateService(currentVersion: '1.0.2'),
-  );
 
   /// Tudo contra o backend FarDesk de verdade. Configurações continuam só
   /// locais (`InMemorySettingsRepository`) de propósito — resolução, bitrate
@@ -96,7 +79,8 @@ class AppDependencies {
   final IntegrationRepository integrationRepository;
   final SettingsRepository settingsRepository;
 
-  /// `null` em modo mock — ver `AppDependencies.mock()`.
+  /// Sempre preenchido aqui — opcional só pra ficar fácil de omitir em
+  /// teste (`HostActivationViewModel` não liga o vigia sem ele).
   final PairingApiClient? pairingApiClient;
   final MoonlightClient moonlightClient;
   final FarDeskNetworkManager? networkManager;

@@ -9,6 +9,7 @@ class AppAvatar extends StatelessWidget {
     super.key,
     required this.initial,
     required this.colors,
+    this.imageUrl,
     this.size = 36,
     this.selected = false,
     this.glow = false,
@@ -16,6 +17,11 @@ class AppAvatar extends StatelessWidget {
 
   final String initial;
   final List<Color> colors;
+
+  /// Foto de perfil (ex: da conta Google) — some por cima do gradiente com a
+  /// inicial quando carrega; sem URL, falhando o carregamento, ou enquanto
+  /// carrega, o gradiente com a inicial continua sendo o que aparece.
+  final String? imageUrl;
 
   /// Diâmetro base (passa pela escala responsiva).
   final double size;
@@ -29,6 +35,7 @@ class AppAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final rem = context.rem;
     final diameter = rem(size);
+    final url = imageUrl;
     return AnimatedContainer(
       duration: Motion.fast,
       padding: EdgeInsets.all(selected ? rem(2.5) : 0),
@@ -46,9 +53,27 @@ class AppAvatar extends StatelessWidget {
           gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
           boxShadow: glow ? [BoxShadow(color: colors.first.withValues(alpha: 0.4), blurRadius: rem(10))] : const [],
         ),
-        child: Text(
-          initial,
-          style: TextStyle(color: AppColors.onBrand, fontWeight: FontWeight.w700, fontSize: diameter * 0.38),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              initial,
+              style: TextStyle(color: AppColors.onBrand, fontWeight: FontWeight.w700, fontSize: diameter * 0.38),
+            ),
+            if (url != null)
+              ClipOval(
+                child: Image.network(
+                  url,
+                  key: ValueKey(url),
+                  width: diameter,
+                  height: diameter,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : const SizedBox.shrink(),
+                ),
+              ),
+          ],
         ),
       ),
     );

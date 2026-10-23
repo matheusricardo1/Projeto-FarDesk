@@ -43,8 +43,8 @@ class HostActivationViewModel extends ChangeNotifier {
   final HostAvailabilityStore _availabilityStore;
   late final HostCredentialsStore _credentialsStore;
 
-  /// `null` quando o app está em modo mock (sem backend de verdade) — o
-  /// vigia simplesmente não liga nesse caso.
+  /// `null` em teste, pra ficar fácil instanciar sem um backend de verdade
+  /// — o vigia simplesmente não liga nesse caso.
   final PairingApiClient? pairingApiClient;
 
   HostAgentPairingService? _watcher;
